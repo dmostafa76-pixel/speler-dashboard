@@ -128,40 +128,67 @@ st.markdown("""
 def load_data():
     raw = pd.read_csv("data/players.csv")
 
-    # De brondata gebruikt andere kolomnamen dan de rest van dit script.
-    # Hier hernoemen we ze één keer naar interne, consistente namen.
+    # Kolomnamen "normaliseren" (spaties weg, kleine letters) zodat kleine
+    # verschillen in de brondata (extra spatie, hoofdletter, etc.) de app
+    # niet meer breken.
+    def norm(col):
+        return "".join(ch for ch in col.lower() if ch.isalnum())
+
+    # target: genormaliseerde brontekst -> interne naam
     column_map = {
-        "Player Name": "naam",
-        "Prefered Position": "positie",
-        "Acc speed (km/h)": "acceleratie_kmh",
-        "Top speed (km/h)": "max_snelheid_kmh",
-        "Jump height (cm)": "sprong_cm",
-        "Agilitiy Time (sec)": "agility_zonder_bal_s",
-        "DribbelingTime (sec)": "agility_met_bal_s",
-        "Distance (m)": "afstand_m",
+        norm("Player Name"): "naam",
+        norm("Prefered Position"): "positie",
+        norm("Acc speed (km/h)"): "acceleratie_kmh",
+        norm("Top speed (km/h)"): "max_snelheid_kmh",
+        norm("Jump height (cm)"): "sprong_cm",
+        norm("Agilitiy Time (sec)"): "agility_zonder_bal_s",
+        norm("DribbelingTime (sec)"): "agility_met_bal_s",
+        norm("Distance (m)"): "afstand_m",
     }
-    raw = raw.rename(columns=column_map)
+
+    rename_dict = {}
+    for original_col in raw.columns:
+        key = norm(original_col)
+        if key in column_map:
+            rename_dict[original_col] = column_map[key]
+
+    raw = raw.rename(columns=rename_dict)
+
+    if "positie" in raw.columns:
+        raw["positie"] = raw["positie"].astype(str).str.strip()
+
+    required = [
+        "naam", "positie", "acceleratie_kmh", "max_snelheid_kmh",
+        "sprong_cm", "agility_zonder_bal_s", "agility_met_bal_s", "afstand_m",
+    ]
+    missing = [c for c in required if c not in raw.columns]
+    if missing:
+        st.error(
+            "Deze verwachte kolommen zijn niet gevonden in players.csv: "
+            f"{missing}. Gevonden kolommen in het bestand: {raw.columns.tolist()}"
+        )
+        st.stop()
+
     return raw
 
 df = load_data()
 
-st.write("Kolommen in CSV:", df.columns.tolist())
-st.stop()
-
 POSITION_COLORS = {
-    "Aanvaller": "#ef4444",
-    "Middenvelder": "#3b82f6",
-    "Verdediger": "#22c55e",
-    "Doelman": "#f97316",
+    "Attacker": "#ef4444",
+    "Midfielder": "#3b82f6",
+    "Defender": "#22c55e",
+    "Goalkeeper": "#f97316",
 }
 
 # (min, max, invert) -> invert=True betekent: lager is beter
+# Deze bereiken zijn gebaseerd op de pilot-testdata (players.csv), met wat
+# marge aan weerszijden. Pas aan zodra je meer/definitieve data hebt.
 RANGES = {
-    "agility": (6.5, 11.0, True),
-    "acceleratie": (25, 40, False),
-    "max_snelheid": (28, 42, False),
-    "sprong": (40, 70, False),
-    "uithoudingsvermogen": (7000, 14000, False),  # nu in meters (was voorheen km)
+    "agility": (13.0, 21.0, True),          # seconden, lager = beter
+    "acceleratie": (14.0, 21.0, False),      # km/h
+    "max_snelheid": (17.0, 27.0, False),     # km/h
+    "sprong": (10.0, 40.0, False),           # cm
+    "uithoudingsvermogen": (250, 2300, False),  # meters
 }
 
 def normalize(value, lo, hi, invert=False):
@@ -216,7 +243,7 @@ for _, row in df.iterrows():
             "Acceleratie": f'{row["acceleratie_kmh"]:.1f} km/h',
             "Max Snelheid": f'{row["max_snelheid_kmh"]:.1f} km/h',
             "Sprong": f'{row["sprong_cm"]:.0f} cm',
-            "Uithoud-vermogen": f'{row["afstand_m"] / 1000:.2f} km',
+            "Uithoud-vermogen": f'{row["afstand_m"]:.0f} m',
         },
     }
 
@@ -682,7 +709,7 @@ with col_bar:
         show_ref = st.checkbox("Referentielijn", value=True)
 
     sorted_df = df.sort_values("agility_zonder_bal_s")
-    colors = [POSITION_COLORS[p] for p in sorted_df["positie"]]
+    colors = [POSITION_COLORS.get(p, "#6b7280") for p in sorted_df["positie"]]
 
     bar_fig = go.Figure(go.Bar(
         x=sorted_df["agility_zonder_bal_s"],
