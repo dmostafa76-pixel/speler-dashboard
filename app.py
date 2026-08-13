@@ -775,10 +775,10 @@ with col_bar:
     }
 
     var layout = {
-        xaxis: { title: null },
-        yaxis: { title: null, autorange: "reversed" },
+        xaxis: { title: null, automargin: true },
+        yaxis: { title: null, autorange: "reversed", automargin: true },
         height: 430,
-        margin: { l: 10, r: 10, t: 10, b: 10 },
+        margin: { l: 10, r: 20, t: 10, b: 30 },
         paper_bgcolor: "white",
         plot_bgcolor: "white",
         shapes: [{
