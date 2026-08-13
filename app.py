@@ -97,7 +97,7 @@ team_scores = {cat: float(np.mean([s[cat] for s in all_scores])) for cat in cate
 tab1, tab2 = st.tabs(["Spider Chart", "Agility Analyse"])
 
 # =============================================================================
-# TAB 1 — SPIDER CHART
+# TAB 1 — SPIDER CHART (MET SMOOTH TRANSITIE)
 # =============================================================================
 with tab1:
     st.markdown('<div class="dash-title">Spider Chart - Algehele Prestatie</div>', unsafe_allow_html=True)
@@ -132,12 +132,20 @@ with tab1:
         fill="toself", name=selected_name,
         line_color="#14b8a6", fillcolor="rgba(20,184,166,0.35)",
     ))
+
     fig.update_layout(
-        polar=dict(radialaxis=dict(visible=True, range=[0, 100], gridcolor="#e5e7eb")),
+        polar=dict(
+            radialaxis=dict(visible=True, range=[0, 100], gridcolor="#e5e7eb"),
+            # Zorgt ervoor dat zoom/rotatie behouden blijft tussen reruns,
+            # zodat Plotly de update als transitie ziet i.p.v. een nieuwe grafiek
+            uirevision="spider-chart",
+        ),
         showlegend=False,
         margin=dict(l=40, r=40, t=20, b=20),
         height=420,
         paper_bgcolor="white", plot_bgcolor="white",
+        # --- Smooth transitie wanneer data verandert (speler wisselen) ---
+        transition=dict(duration=600, easing="cubic-in-out"),
     )
 
     col_chart, col_info = st.columns([2, 1])
