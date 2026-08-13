@@ -1,9 +1,62 @@
+import json
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 
 st.set_page_config(page_title="Speler Prestatie Dashboard", layout="wide")
+
+st.markdown("""
+<style>
+/* Verberg Streamlit's eigen header/menu voor een clean look */
+#MainMenu {visibility: hidden;}
+header {visibility: hidden;}
+
+.top-navbar {
+    display: flex;
+    align-items: center;
+    background-color: #1e1b3a;
+    padding: 1rem 2rem;
+    margin: -1rem -1rem 1.5rem -1rem;
+}
+.navbar-logo {
+    font-family: Arial, sans-serif;
+    font-weight: 800;
+    font-size: 1.1rem;
+    color: white;
+    line-height: 1.1;
+    letter-spacing: 0.02em;
+}
+.navbar-logo .sub {
+    display: block;
+    font-size: 0.55rem;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    color: #a5b4fc;
+    margin-top: 0.1rem;
+}
+.page-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 0.25rem;
+    line-height: 1.3;
+}
+.page-subtitle {
+    font-size: 0.95rem;
+    color: #94a3b8;
+    margin-bottom: 1.5rem;
+}
+</style>
+
+<div class="top-navbar">
+    <div class="navbar-logo">KICK<span class="sub">COMPETITION</span></div>
+</div>
+
+<div class="page-title">Baseline Dashboard - 1e Testmoment</div>
+<div class="page-subtitle">Overzicht van alle prestatiegegevens van het team</div>
+""", unsafe_allow_html=True)
 
 # ---------------------------------------------------------------------------
 # Styling — dark navy background met witte kaarten, zoals in de mockups
@@ -91,228 +144,523 @@ all_scores = [player_scores(r) for _, r in df.iterrows()]
 categories = list(all_scores[0].keys())
 team_scores = {cat: float(np.mean([s[cat] for s in all_scores])) for cat in categories}
 
-# ---------------------------------------------------------------------------
-# Navigatie
-# ---------------------------------------------------------------------------
-tab1, tab2 = st.tabs(["Spider Chart", "Agility Analyse"])
-
 # =============================================================================
-# TAB 1 — SPIDER CHART (MET SMOOTH TRANSITIE)
+# SECTIE 1 — SPIDER CHART (CLIENT-SIDE, MET ECHTE SMOOTH TRANSITIE)
 # =============================================================================
-with tab1:
-    st.markdown('<div class="dash-title">Spider Chart - Algehele Prestatie</div>', unsafe_allow_html=True)
-    st.markdown('<div class="dash-subtitle">Vergelijking speler vs. teamgemiddelde</div>', unsafe_allow_html=True)
+st.markdown('<div class="dash-title">Spider Chart - Algehele Prestatie</div>', unsafe_allow_html=True)
+st.markdown('<div class="dash-subtitle">Vergelijking speler vs. teamgemiddelde</div>', unsafe_allow_html=True)
 
-    st.markdown('<div class="white-card">', unsafe_allow_html=True)
+STAT_COLORS = {
+    "Agility": "#22c55e",
+    "Acceleratie": "#3b82f6",
+    "Max Snelheid": "#a855f7",
+    "Sprong": "#f97316",
+    "Uithoud-vermogen": "#ef4444",
+}
+STAT_LABELS = {
+    "Agility": "Agility",
+    "Acceleratie": "Acceleratie",
+    "Max Snelheid": "Max. Snelheid",
+    "Sprong": "Sprong",
+    "Uithoud-vermogen": "Uithoudingsvermogen",
+}
 
-    col_sel, col_toggle = st.columns([3, 1])
-    with col_sel:
-        st.markdown("**Selecteer Speler**")
-        player_options = (df["naam"] + " - " + df["positie"]).tolist()
-        selected_label = st.selectbox("Selecteer Speler", player_options, label_visibility="collapsed")
-        selected_name = selected_label.split(" - ")[0]
-    with col_toggle:
-        st.write("")
-        show_team_avg = st.checkbox("Toon Team Gemiddelde", value=True)
+players_data = {}
+for _, row in df.iterrows():
+    name = row["naam"]
+    s = player_scores(row)
+    players_data[name] = {
+        "positie": row["positie"],
+        "scores": s,
+        "raw": {
+            "Agility": f'{row["agility_zonder_bal_s"]:.1f}s',
+            "Acceleratie": f'{row["acceleratie_kmh"]:.1f} km/h',
+            "Max Snelheid": f'{row["max_snelheid_kmh"]:.1f} km/h',
+            "Sprong": f'{row["sprong_cm"]:.0f} cm',
+            "Uithoud-vermogen": f'{row["uithoudingsvermogen_km"]:.1f} km',
+        },
+    }
 
-    player_row = df[df["naam"] == selected_name].iloc[0]
-    scores = player_scores(player_row)
+default_name = df["naam"].iloc[0]
 
-    fig = go.Figure()
-    if show_team_avg:
-        fig.add_trace(go.Scatterpolar(
-            r=list(team_scores.values()) + [list(team_scores.values())[0]],
-            theta=categories + [categories[0]],
-            fill="toself", name="Team Gemiddelde",
-            line_color="#3b82f6", fillcolor="rgba(59,130,246,0.15)",
-        ))
-    fig.add_trace(go.Scatterpolar(
-        r=list(scores.values()) + [list(scores.values())[0]],
-        theta=categories + [categories[0]],
-        fill="toself", name=selected_name,
-        line_color="#14b8a6", fillcolor="rgba(20,184,166,0.35)",
-    ))
+PLAYERS_JSON = json.dumps(players_data, ensure_ascii=False)
+TEAM_JSON = json.dumps(team_scores, ensure_ascii=False)
+CATEGORIES_JSON = json.dumps(categories, ensure_ascii=False)
+STAT_COLORS_JSON = json.dumps(STAT_COLORS, ensure_ascii=False)
+STAT_LABELS_JSON = json.dumps(STAT_LABELS, ensure_ascii=False)
+DEFAULT_NAME_JSON = json.dumps(default_name, ensure_ascii=False)
+PLAYER_NAMES_JSON = json.dumps(sorted(players_data.keys()), ensure_ascii=False)
+LABEL_OPTIONS_JSON = json.dumps(
+    [f'{n} - {players_data[n]["positie"]}' for n in sorted(players_data.keys())],
+    ensure_ascii=False,
+)
 
-    fig.update_layout(
-        polar=dict(
-            radialaxis=dict(visible=True, range=[0, 100], gridcolor="#e5e7eb"),
-            # Zorgt ervoor dat zoom/rotatie behouden blijft tussen reruns,
-            # zodat Plotly de update als transitie ziet i.p.v. een nieuwe grafiek
-            uirevision="spider-chart",
-        ),
-        showlegend=False,
-        margin=dict(l=40, r=40, t=20, b=20),
-        height=420,
-        paper_bgcolor="white", plot_bgcolor="white",
-        # --- Smooth transitie wanneer data verandert (speler wisselen) ---
-        transition=dict(duration=600, easing="cubic-in-out"),
-    )
-
-    col_chart, col_info = st.columns([2, 1])
-    with col_chart:
-        st.plotly_chart(fig, use_container_width=True)
-        legend_html = '<div style="display:flex; gap:1.5rem; justify-content:center; font-size:0.85rem; color:#374151;">'
-        if show_team_avg:
-            legend_html += ('<div><span style="display:inline-block;width:10px;height:10px;'
-                             'background:#3b82f6;border-radius:2px;margin-right:6px;"></span>Team Gemiddelde</div>')
-        legend_html += (f'<div><span style="display:inline-block;width:10px;height:10px;'
-                         f'background:#14b8a6;border-radius:2px;margin-right:6px;"></span>{selected_name}</div></div>')
-        st.markdown(legend_html, unsafe_allow_html=True)
-
-    with col_info:
-        st.markdown(f'<div class="card-title">{selected_name}</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="card-subtitle">{player_row["positie"]}</div>', unsafe_allow_html=True)
-
-        stat_defs = [
-            ("Agility", f'{player_row["agility_zonder_bal_s"]:.1f}s', scores["Agility"], "#22c55e"),
-            ("Acceleratie", f'{player_row["acceleratie_kmh"]:.1f} km/h', scores["Acceleratie"], "#3b82f6"),
-            ("Max. Snelheid", f'{player_row["max_snelheid_kmh"]:.1f} km/h', scores["Max Snelheid"], "#a855f7"),
-            ("Sprong", f'{player_row["sprong_cm"]:.0f} cm', scores["Sprong"], "#f97316"),
-            ("Uithoudingsvermogen", f'{player_row["uithoudingsvermogen_km"]:.1f} km', scores["Uithoud-vermogen"], "#ef4444"),
-        ]
-        for label, value_str, pct, color in stat_defs:
-            st.markdown(f"""
-            <div class="stat-row">
-                <div class="stat-label-row"><span>{label}</span><span>{value_str}</span></div>
-                <div class="stat-bar-bg"><div class="stat-bar-fill" style="width:{pct}%; background-color:{color};"></div></div>
+HTML_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<style>
+    * { box-sizing: border-box; }
+    body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+        background: transparent;
+    }
+    .card {
+        background: #ffffff;
+        border-radius: 14px;
+        padding: 1.5rem 1.75rem;
+    }
+    .top-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    .sel-label {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #111827;
+        margin-bottom: 0.4rem;
+        display: block;
+    }
+    select {
+        width: 100%;
+        max-width: 420px;
+        padding: 0.55rem 0.75rem;
+        border-radius: 8px;
+        border: 1px solid #d1d5db;
+        font-size: 0.9rem;
+        color: #111827;
+        background: #ffffff;
+    }
+    .toggle-wrap {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        white-space: nowrap;
+        padding-top: 1.6rem;
+    }
+    .toggle-wrap label {
+        font-size: 0.9rem;
+        color: #111827;
+    }
+    .content-row {
+        display: flex;
+        gap: 2rem;
+        flex-wrap: wrap;
+    }
+    .chart-col {
+        flex: 2;
+        min-width: 320px;
+    }
+    .info-col {
+        flex: 1;
+        min-width: 260px;
+    }
+    .legend {
+        display: flex;
+        gap: 1.5rem;
+        justify-content: center;
+        font-size: 0.85rem;
+        color: #374151;
+        margin-top: 0.25rem;
+    }
+    .legend span.dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 2px;
+        margin-right: 6px;
+    }
+    .card-title {
+        color: #111827;
+        font-size: 1.05rem;
+        font-weight: 700;
+    }
+    .card-subtitle {
+        color: #9ca3af;
+        font-size: 0.8rem;
+        margin-bottom: 1rem;
+    }
+    .stat-row { margin-bottom: 0.85rem; }
+    .stat-label-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.85rem;
+        color: #374151;
+        margin-bottom: 0.25rem;
+    }
+    .stat-bar-bg {
+        background-color: #e5e7eb;
+        border-radius: 999px;
+        height: 7px;
+        width: 100%;
+        overflow: hidden;
+    }
+    .stat-bar-fill {
+        border-radius: 999px;
+        height: 7px;
+        transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .note-box {
+        background-color: #eff6ff;
+        border-radius: 10px;
+        padding: 0.9rem 1rem;
+        font-size: 0.82rem;
+        color: #374151;
+        margin-top: 1rem;
+    }
+</style>
+</head>
+<body>
+    <div class="card">
+        <div class="top-row">
+            <div style="flex:1; min-width:260px;">
+                <span class="sel-label">Selecteer Speler</span>
+                <select id="playerSelect"></select>
             </div>
-            """, unsafe_allow_html=True)
-
-        st.markdown("""
-        <div class="note-box">
-        <b>Opmerking</b><br>
-        De spider chart toont genormaliseerde waarden (0-100) voor een directe vergelijking tussen verschillende metrics.
+            <div class="toggle-wrap">
+                <input type="checkbox" id="teamToggle" checked />
+                <label for="teamToggle">Toon Team Gemiddelde</label>
+            </div>
         </div>
-        """, unsafe_allow_html=True)
 
+        <div class="content-row">
+            <div class="chart-col">
+                <div id="spiderChart" style="width:100%; height:420px;"></div>
+                <div class="legend" id="legendBox"></div>
+            </div>
+            <div class="info-col">
+                <div class="card-title" id="playerName"></div>
+                <div class="card-subtitle" id="playerPos"></div>
+                <div id="statBars"></div>
+                <div class="note-box">
+                    <b>Opmerking</b><br>
+                    De spider chart toont genormaliseerde waarden (0-100) voor een directe vergelijking tussen verschillende metrics.
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    var PLAYERS = __PLAYERS_JSON__;
+    var TEAM = __TEAM_JSON__;
+    var CATEGORIES = __CATEGORIES_JSON__;
+    var STAT_COLORS = __STAT_COLORS_JSON__;
+    var STAT_LABELS = __STAT_LABELS_JSON__;
+    var DEFAULT_NAME = __DEFAULT_NAME_JSON__;
+    var PLAYER_NAMES = __PLAYER_NAMES_JSON__;
+    var LABEL_OPTIONS = __LABEL_OPTIONS_JSON__;
+
+    var selectEl = document.getElementById("playerSelect");
+    var toggleEl = document.getElementById("teamToggle");
+
+    PLAYER_NAMES.forEach(function (name, i) {
+        var opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = LABEL_OPTIONS[i];
+        if (name === DEFAULT_NAME) opt.selected = true;
+        selectEl.appendChild(opt);
+    });
+
+    var baseLayout = {
+        polar: {
+            radialaxis: { visible: true, range: [0, 100], gridcolor: "#e5e7eb" },
+        },
+        showlegend: false,
+        margin: { l: 40, r: 40, t: 20, b: 20 },
+        height: 420,
+        paper_bgcolor: "white",
+        plot_bgcolor: "white",
+    };
+
+    var chartInitialized = false;
+    var animRunning = false;
+
+    // Plotly's ingebouwde `transition` werkt niet betrouwbaar voor scatterpolar
+    // (radar) traces. Daarom animeren we hier zelf: we interpoleren de r-waarden
+    // stap voor stap en pushen die via Plotly.restyle() naar de grafiek.
+    function easeInOutCubic(t) {
+        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    }
+
+    function animateToTraces(newTraces) {
+        var gd = document.getElementById("spiderChart");
+        var currentData = gd.data || [];
+
+        // Als het aantal traces verschilt (bv. team-gemiddelde aan/uit gezet),
+        // kunnen we niet zinvol interpoleren: direct hertekenen.
+        if (currentData.length !== newTraces.length) {
+            Plotly.react("spiderChart", newTraces, baseLayout, { displayModeBar: false, responsive: true });
+            return;
+        }
+
+        var startR = currentData.map(function (tr) { return tr.r.slice(); });
+        var endR = newTraces.map(function (tr) { return tr.r.slice(); });
+
+        var duration = 600;
+        var startTime = null;
+        animRunning = true;
+
+        function step(timestamp) {
+            if (!startTime) startTime = timestamp;
+            var elapsed = timestamp - startTime;
+            var t = Math.min(elapsed / duration, 1);
+            var eased = easeInOutCubic(t);
+
+            var interpR = startR.map(function (arr, i) {
+                return arr.map(function (v, j) {
+                    return v + (endR[i][j] - v) * eased;
+                });
+            });
+
+            Plotly.restyle("spiderChart", { r: interpR });
+
+            if (t < 1) {
+                requestAnimationFrame(step);
+            } else {
+                animRunning = false;
+                // Zet na de animatie de volledige trace-config (namen, kleuren, hover)
+                // definitief vast, voor het geval die ook gewijzigd zijn.
+                Plotly.react("spiderChart", newTraces, baseLayout, { displayModeBar: false, responsive: true });
+            }
+        }
+        requestAnimationFrame(step);
+    }
+
+    function buildTraces(name, showTeam) {
+        var p = PLAYERS[name];
+        var scoreArr = CATEGORIES.map(function (c) { return p.scores[c]; });
+        scoreArr.push(scoreArr[0]);
+        var thetaArr = CATEGORIES.concat([CATEGORIES[0]]);
+
+        var traces = [];
+        if (showTeam) {
+            var teamArr = CATEGORIES.map(function (c) { return TEAM[c]; });
+            teamArr.push(teamArr[0]);
+            traces.push({
+                type: "scatterpolar",
+                r: teamArr,
+                theta: thetaArr,
+                fill: "toself",
+                name: "Team Gemiddelde",
+                line: { color: "#3b82f6" },
+                fillcolor: "rgba(59,130,246,0.15)",
+            });
+        }
+        traces.push({
+            type: "scatterpolar",
+            r: scoreArr,
+            theta: thetaArr,
+            fill: "toself",
+            name: name,
+            line: { color: "#14b8a6" },
+            fillcolor: "rgba(20,184,166,0.35)",
+        });
+        return traces;
+    }
+
+    function updateLegend(name, showTeam) {
+        var html = "";
+        if (showTeam) {
+            html += '<div><span class="dot" style="background:#3b82f6;"></span>Team Gemiddelde</div>';
+        }
+        html += '<div><span class="dot" style="background:#14b8a6;"></span>' + name + "</div>";
+        document.getElementById("legendBox").innerHTML = html;
+    }
+
+    function updateInfoPanel(name) {
+        var p = PLAYERS[name];
+        document.getElementById("playerName").textContent = name;
+        document.getElementById("playerPos").textContent = p.positie;
+
+        var barsHtml = "";
+        CATEGORIES.forEach(function (cat) {
+            var pct = p.scores[cat];
+            var value = p.raw[cat];
+            var color = STAT_COLORS[cat];
+            var label = STAT_LABELS[cat];
+            barsHtml += (
+                '<div class="stat-row">' +
+                '<div class="stat-label-row"><span>' + label + "</span><span>" + value + "</span></div>" +
+                '<div class="stat-bar-bg"><div class="stat-bar-fill" style="width:' + pct + '%; background-color:' + color + ';"></div></div>' +
+                "</div>"
+            );
+        });
+        document.getElementById("statBars").innerHTML = barsHtml;
+    }
+
+    function renderChart(name) {
+        var showTeam = toggleEl.checked;
+        var traces = buildTraces(name, showTeam);
+
+        if (!chartInitialized) {
+            Plotly.newPlot("spiderChart", traces, baseLayout, { displayModeBar: false, responsive: true });
+            chartInitialized = true;
+        } else {
+            animateToTraces(traces);
+        }
+        updateLegend(name, showTeam);
+        updateInfoPanel(name);
+    }
+
+    selectEl.addEventListener("change", function () {
+        renderChart(selectEl.value);
+    });
+    toggleEl.addEventListener("change", function () {
+        renderChart(selectEl.value);
+    });
+
+    renderChart(DEFAULT_NAME);
+</script>
+</body>
+</html>
+"""
+
+html_out = (
+    HTML_TEMPLATE
+    .replace("__PLAYERS_JSON__", PLAYERS_JSON)
+    .replace("__TEAM_JSON__", TEAM_JSON)
+    .replace("__CATEGORIES_JSON__", CATEGORIES_JSON)
+    .replace("__STAT_COLORS_JSON__", STAT_COLORS_JSON)
+    .replace("__STAT_LABELS_JSON__", STAT_LABELS_JSON)
+    .replace("__DEFAULT_NAME_JSON__", DEFAULT_NAME_JSON)
+    .replace("__PLAYER_NAMES_JSON__", PLAYER_NAMES_JSON)
+    .replace("__LABEL_OPTIONS_JSON__", LABEL_OPTIONS_JSON)
+)
+
+components.html(html_out, height=650, scrolling=False)
+
+# =============================================================================
+# SECTIE 2 — AGILITY ANALYSE
+# =============================================================================
+st.markdown('<div class="dash-title">Agility Analyse</div>', unsafe_allow_html=True)
+st.markdown('<div class="dash-subtitle">Wendbaarheid en balcontrole van spelers</div>', unsafe_allow_html=True)
+st.markdown('<div class="badge-pill">Test: Illinois Agility Test (met en zonder bal)</div>', unsafe_allow_html=True)
+
+avg_zonder = df["agility_zonder_bal_s"].mean()
+avg_met = df["agility_met_bal_s"].mean()
+best_row = df.loc[df["agility_zonder_bal_s"].idxmin()]
+worst_row = df.loc[df["agility_zonder_bal_s"].idxmax()]
+
+c1, c2, c3, c4 = st.columns(4)
+with c1:
+    st.markdown(f"""
+    <div class="metric-card">
+        <div class="metric-label">Gem. Agility Zonder Bal</div>
+        <div class="metric-value">{avg_zonder:.2f}s</div>
+        <div class="metric-sub">Team gemiddelde</div>
+    </div>""", unsafe_allow_html=True)
+with c2:
+    st.markdown(f"""
+    <div class="metric-card">
+        <div class="metric-label">Gem. Agility Met Bal</div>
+        <div class="metric-value">{avg_met:.2f}s</div>
+        <div class="metric-sub">Team gemiddelde</div>
+    </div>""", unsafe_allow_html=True)
+with c3:
+    st.markdown(f"""
+    <div class="metric-card">
+        <div class="metric-label">&#8599; Beste Speler</div>
+        <div class="metric-value green">{best_row['naam']}</div>
+        <div class="metric-sub green">{best_row['agility_zonder_bal_s']:.2f}s</div>
+    </div>""", unsafe_allow_html=True)
+with c4:
+    st.markdown(f"""
+    <div class="metric-card">
+        <div class="metric-label">&#8600; Zwakste Speler</div>
+        <div class="metric-value red">{worst_row['naam']}</div>
+        <div class="metric-sub red">{worst_row['agility_zonder_bal_s']:.2f}s</div>
+    </div>""", unsafe_allow_html=True)
+
+col_bar, col_scatter = st.columns(2)
+
+# --- Agility per speler (bar chart) ---
+with col_bar:
+    st.markdown('<div class="white-card">', unsafe_allow_html=True)
+    top_row = st.columns([3, 1])
+    with top_row[0]:
+        st.markdown('<div class="card-title">Agility per Speler</div>', unsafe_allow_html=True)
+        st.markdown('<div class="card-subtitle">Gesorteerd op prestatie (lager is beter)</div>', unsafe_allow_html=True)
+    with top_row[1]:
+        show_ref = st.checkbox("Referentielijn", value=True)
+
+    sorted_df = df.sort_values("agility_zonder_bal_s")
+    colors = [POSITION_COLORS[p] for p in sorted_df["positie"]]
+
+    bar_fig = go.Figure(go.Bar(
+        x=sorted_df["agility_zonder_bal_s"],
+        y=sorted_df["naam"],
+        orientation="h",
+        marker_color=colors,
+    ))
+    if show_ref:
+        bar_fig.add_vline(x=avg_zonder, line_dash="dash", line_color="#9ca3af")
+    bar_fig.update_layout(
+        xaxis_title=None, yaxis_title=None,
+        yaxis=dict(autorange="reversed"),
+        height=430,
+        margin=dict(l=10, r=10, t=10, b=10),
+        paper_bgcolor="white", plot_bgcolor="white",
+    )
+    st.plotly_chart(bar_fig, use_container_width=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-# =============================================================================
-# TAB 2 — AGILITY ANALYSE
-# =============================================================================
-with tab2:
-    st.markdown('<div class="dash-title">Agility Analyse</div>', unsafe_allow_html=True)
-    st.markdown('<div class="dash-subtitle">Wendbaarheid en balcontrole van spelers</div>', unsafe_allow_html=True)
-    st.markdown('<div class="badge-pill">Test: Illinois Agility Test (met en zonder bal)</div>', unsafe_allow_html=True)
+# --- Agility matrix (scatter) ---
+with col_scatter:
+    st.markdown('<div class="white-card">', unsafe_allow_html=True)
+    st.markdown('<div class="card-title">Agility Matrix</div>', unsafe_allow_html=True)
+    st.markdown('<div class="card-subtitle">Zonder bal vs. Met bal</div>', unsafe_allow_html=True)
 
-    avg_zonder = df["agility_zonder_bal_s"].mean()
-    avg_met = df["agility_met_bal_s"].mean()
-    best_row = df.loc[df["agility_zonder_bal_s"].idxmin()]
-    worst_row = df.loc[df["agility_zonder_bal_s"].idxmax()]
-
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-label">Gem. Agility Zonder Bal</div>
-            <div class="metric-value">{avg_zonder:.2f}s</div>
-            <div class="metric-sub">Team gemiddelde</div>
-        </div>""", unsafe_allow_html=True)
-    with c2:
-        st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-label">Gem. Agility Met Bal</div>
-            <div class="metric-value">{avg_met:.2f}s</div>
-            <div class="metric-sub">Team gemiddelde</div>
-        </div>""", unsafe_allow_html=True)
-    with c3:
-        st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-label">&#8599; Beste Speler</div>
-            <div class="metric-value green">{best_row['naam']}</div>
-            <div class="metric-sub green">{best_row['agility_zonder_bal_s']:.2f}s</div>
-        </div>""", unsafe_allow_html=True)
-    with c4:
-        st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-label">&#8600; Zwakste Speler</div>
-            <div class="metric-value red">{worst_row['naam']}</div>
-            <div class="metric-sub red">{worst_row['agility_zonder_bal_s']:.2f}s</div>
-        </div>""", unsafe_allow_html=True)
-
-    col_bar, col_scatter = st.columns(2)
-
-    # --- Agility per speler (bar chart) ---
-    with col_bar:
-        st.markdown('<div class="white-card">', unsafe_allow_html=True)
-        top_row = st.columns([3, 1])
-        with top_row[0]:
-            st.markdown('<div class="card-title">Agility per Speler</div>', unsafe_allow_html=True)
-            st.markdown('<div class="card-subtitle">Gesorteerd op prestatie (lager is beter)</div>', unsafe_allow_html=True)
-        with top_row[1]:
-            show_ref = st.checkbox("Referentielijn", value=True)
-
-        sorted_df = df.sort_values("agility_zonder_bal_s")
-        colors = [POSITION_COLORS[p] for p in sorted_df["positie"]]
-
-        bar_fig = go.Figure(go.Bar(
-            x=sorted_df["agility_zonder_bal_s"],
-            y=sorted_df["naam"],
-            orientation="h",
-            marker_color=colors,
+    scatter_fig = go.Figure()
+    for pos, color in POSITION_COLORS.items():
+        sub = df[df["positie"] == pos]
+        if sub.empty:
+            continue
+        scatter_fig.add_trace(go.Scatter(
+            x=sub["agility_zonder_bal_s"], y=sub["agility_met_bal_s"],
+            mode="markers", marker=dict(color=color, size=10),
+            name=pos, text=sub["naam"], hovertemplate="%{text}<extra></extra>",
         ))
-        if show_ref:
-            bar_fig.add_vline(x=avg_zonder, line_dash="dash", line_color="#9ca3af")
-        bar_fig.update_layout(
-            xaxis_title=None, yaxis_title=None,
-            yaxis=dict(autorange="reversed"),
-            height=430,
-            margin=dict(l=10, r=10, t=10, b=10),
-            paper_bgcolor="white", plot_bgcolor="white",
-        )
-        st.plotly_chart(bar_fig, use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+    scatter_fig.add_vline(x=avg_zonder, line_dash="dot", line_color="#d1d5db")
+    scatter_fig.add_hline(y=avg_met, line_dash="dot", line_color="#d1d5db")
+    scatter_fig.update_layout(
+        xaxis=dict(title="Agility Zonder Bal (s) →", autorange="reversed"),
+        yaxis=dict(title="Agility Met Bal (s) ↑", autorange="reversed"),
+        height=380,
+        margin=dict(l=10, r=10, t=10, b=10),
+        legend=dict(orientation="h", yanchor="bottom", y=-0.35),
+        paper_bgcolor="white", plot_bgcolor="white",
+    )
+    st.plotly_chart(scatter_fig, use_container_width=True)
 
-    # --- Agility matrix (scatter) ---
-    with col_scatter:
-        st.markdown('<div class="white-card">', unsafe_allow_html=True)
-        st.markdown('<div class="card-title">Agility Matrix</div>', unsafe_allow_html=True)
-        st.markdown('<div class="card-subtitle">Zonder bal vs. Met bal</div>', unsafe_allow_html=True)
+    q1, q2 = st.columns(2)
+    with q1:
+        st.markdown("""
+        <div class="quad-box" style="background-color:#dcfce7;">
+            <div class="quad-title" style="color:#166534;">Linksboven: Game Changer</div>
+            <div style="color:#166534;">Explosief + technisch sterk</div>
+        </div>""", unsafe_allow_html=True)
+        st.markdown("""
+        <div class="quad-box" style="background-color:#dbeafe;">
+            <div class="quad-title" style="color:#1e40af;">Linksonder</div>
+            <div style="color:#1e40af;">Technisch sterk, minder wendbaar</div>
+        </div>""", unsafe_allow_html=True)
+    with q2:
+        st.markdown("""
+        <div class="quad-box" style="background-color:#fee2e2;">
+            <div class="quad-title" style="color:#991b1b;">Rechtsonder: Probleem</div>
+            <div style="color:#991b1b;">Traag + slechte balcontrole</div>
+        </div>""", unsafe_allow_html=True)
+        st.markdown("""
+        <div class="quad-box" style="background-color:#ffedd5;">
+            <div class="quad-title" style="color:#9a3412;">Rechtsboven</div>
+            <div style="color:#9a3412;">Wendbaar, balvaardigheid onder druk</div>
+        </div>""", unsafe_allow_html=True)
 
-        scatter_fig = go.Figure()
-        for pos, color in POSITION_COLORS.items():
-            sub = df[df["positie"] == pos]
-            if sub.empty:
-                continue
-            scatter_fig.add_trace(go.Scatter(
-                x=sub["agility_zonder_bal_s"], y=sub["agility_met_bal_s"],
-                mode="markers", marker=dict(color=color, size=10),
-                name=pos, text=sub["naam"], hovertemplate="%{text}<extra></extra>",
-            ))
-        scatter_fig.add_vline(x=avg_zonder, line_dash="dot", line_color="#d1d5db")
-        scatter_fig.add_hline(y=avg_met, line_dash="dot", line_color="#d1d5db")
-        scatter_fig.update_layout(
-            xaxis=dict(title="Agility Zonder Bal (s) →", autorange="reversed"),
-            yaxis=dict(title="Agility Met Bal (s) ↑", autorange="reversed"),
-            height=380,
-            margin=dict(l=10, r=10, t=10, b=10),
-            legend=dict(orientation="h", yanchor="bottom", y=-0.35),
-            paper_bgcolor="white", plot_bgcolor="white",
-        )
-        st.plotly_chart(scatter_fig, use_container_width=True)
-
-        q1, q2 = st.columns(2)
-        with q1:
-            st.markdown("""
-            <div class="quad-box" style="background-color:#dcfce7;">
-                <div class="quad-title" style="color:#166534;">Linksboven: Game Changer</div>
-                <div style="color:#166534;">Explosief + technisch sterk</div>
-            </div>""", unsafe_allow_html=True)
-            st.markdown("""
-            <div class="quad-box" style="background-color:#dbeafe;">
-                <div class="quad-title" style="color:#1e40af;">Linksonder</div>
-                <div style="color:#1e40af;">Technisch sterk, minder wendbaar</div>
-            </div>""", unsafe_allow_html=True)
-        with q2:
-            st.markdown("""
-            <div class="quad-box" style="background-color:#fee2e2;">
-                <div class="quad-title" style="color:#991b1b;">Rechtsonder: Probleem</div>
-                <div style="color:#991b1b;">Traag + slechte balcontrole</div>
-            </div>""", unsafe_allow_html=True)
-            st.markdown("""
-            <div class="quad-box" style="background-color:#ffedd5;">
-                <div class="quad-title" style="color:#9a3412;">Rechtsboven</div>
-                <div style="color:#9a3412;">Wendbaar, balvaardigheid onder druk</div>
-            </div>""", unsafe_allow_html=True)
-
-        st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
