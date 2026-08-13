@@ -37,6 +37,12 @@ header {visibility: hidden;}
     color: #ffffff;
     margin-top: 0.1rem;
 }
+.navbar-logo .ball-icon {
+    display: inline-block;
+    vertical-align: top;
+    margin-left: 0.2rem;
+    margin-top: -0.15rem;
+}
 .page-title {
     font-size: 1.75rem;
     font-weight: 700;
@@ -57,7 +63,7 @@ header {visibility: hidden;}
 </style>
 
 <div class="top-navbar">
-    <div class="navbar-logo">KICK<span class="sub">COMPETITION</span></div>
+    <div class="navbar-logo">KICK<svg class="ball-icon" viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="#ffffff" stroke-width="1.4" fill="none"/><path d="M12 6.2l3.2 2.3-1.2 3.8h-4l-1.2-3.8L12 6.2z" fill="#ffffff"/><path d="M12 2.5V6.2M5.3 7.9L2.2 6M18.7 7.9l3.1-1.9M8.8 12.3L4.4 15.7M15.2 12.3l4.4 3.4M9.1 16.3l6-.1.9 3.6M9.1 16.3l-1 3.6" stroke="#ffffff" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="sub">COMPETITION</span></div>
 </div>
 
 <div class="page-title">Baseline Dashboard - 1e Testmoment</div>
