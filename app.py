@@ -126,7 +126,22 @@ st.markdown("""
 # ---------------------------------------------------------------------------
 @st.cache_data
 def load_data():
-    return pd.read_csv("data/players.csv")
+    raw = pd.read_csv("data/players.csv")
+
+    # De brondata gebruikt andere kolomnamen dan de rest van dit script.
+    # Hier hernoemen we ze één keer naar interne, consistente namen.
+    column_map = {
+        "Player Name": "naam",
+        "Prefered Position": "positie",
+        "Acc speed (km/h)": "acceleratie_kmh",
+        "Top speed (km/h)": "max_snelheid_kmh",
+        "Jump height (cm)": "sprong_cm",
+        "Agilitiy Time (sec)": "agility_zonder_bal_s",
+        "DribbelingTime (sec)": "agility_met_bal_s",
+        "Distance (m)": "afstand_m",
+    }
+    raw = raw.rename(columns=column_map)
+    return raw
 
 df = load_data()
 
@@ -143,7 +158,7 @@ RANGES = {
     "acceleratie": (25, 40, False),
     "max_snelheid": (28, 42, False),
     "sprong": (40, 70, False),
-    "uithoudingsvermogen": (7, 14, False),
+    "uithoudingsvermogen": (7000, 14000, False),  # nu in meters (was voorheen km)
 }
 
 def normalize(value, lo, hi, invert=False):
@@ -158,7 +173,7 @@ def player_scores(row):
         "Acceleratie": normalize(row["acceleratie_kmh"], *RANGES["acceleratie"][:2]),
         "Max Snelheid": normalize(row["max_snelheid_kmh"], *RANGES["max_snelheid"][:2]),
         "Sprong": normalize(row["sprong_cm"], *RANGES["sprong"][:2]),
-        "Uithoud-vermogen": normalize(row["uithoudingsvermogen_km"], *RANGES["uithoudingsvermogen"][:2]),
+        "Uithoud-vermogen": normalize(row["afstand_m"], *RANGES["uithoudingsvermogen"][:2]),
     }
 
 all_scores = [player_scores(r) for _, r in df.iterrows()]
@@ -198,7 +213,7 @@ for _, row in df.iterrows():
             "Acceleratie": f'{row["acceleratie_kmh"]:.1f} km/h',
             "Max Snelheid": f'{row["max_snelheid_kmh"]:.1f} km/h',
             "Sprong": f'{row["sprong_cm"]:.0f} cm',
-            "Uithoud-vermogen": f'{row["uithoudingsvermogen_km"]:.1f} km',
+            "Uithoud-vermogen": f'{row["afstand_m"] / 1000:.2f} km',
         },
     }
 
