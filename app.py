@@ -959,3 +959,330 @@ with col_scatter:
         .replace("__AVG_MET_JSON__", AVG_MET_JSON)
     )
     components.html(scatter_html_out, height=480, scrolling=False)
+
+# =============================================================================
+# SECTIE 3 — SPRINT ANALYSE
+# =============================================================================
+st.markdown('<div class="dash-title">Sprint Analyse</div>', unsafe_allow_html=True)
+st.markdown('<div class="dash-subtitle">Acceleratie en topsnelheid metingen</div>', unsafe_allow_html=True)
+st.markdown(
+    '<div class="badge-pill">Test: 30m Sprint (acceleratie + topsnelheid)</div>',
+    unsafe_allow_html=True,
+)
+
+# NB: er is geen aparte "Totaal"-kolom in de brondata. "Totaal" hieronder is
+# het gemiddelde van acceleratie_kmh en max_snelheid_kmh. Pas dit aan zodra
+# er een specifieke totaalscore-kolom beschikbaar is.
+avg_accel = float(df["acceleratie_kmh"].mean())
+avg_top = float(df["max_snelheid_kmh"].mean())
+df["totaal_snelheid"] = (df["acceleratie_kmh"] + df["max_snelheid_kmh"]) / 2
+avg_totaal = float(df["totaal_snelheid"].mean())
+
+best_accel_row = df.loc[df["acceleratie_kmh"].idxmax()]
+best_top_row = df.loc[df["max_snelheid_kmh"].idxmax()]
+
+m1, m2, m3, m4 = st.columns(4)
+with m1:
+    st.markdown(f"""
+    <div class="metric-card">
+        <div class="metric-label">Gem. Acceleration Speed</div>
+        <div class="metric-value">{avg_accel:.1f} km/h</div>
+        <div class="metric-sub">Team gemiddelde</div>
+    </div>""", unsafe_allow_html=True)
+with m2:
+    st.markdown(f"""
+    <div class="metric-card">
+        <div class="metric-label">Gem. Topsnelheid</div>
+        <div class="metric-value">{avg_top:.1f} km/h</div>
+        <div class="metric-sub">Team gemiddelde</div>
+    </div>""", unsafe_allow_html=True)
+with m3:
+    st.markdown(f"""
+    <div class="metric-card">
+        <div class="metric-label">&#9889; Explosiefste Speler</div>
+        <div class="metric-value">{best_accel_row['naam']}</div>
+        <div class="metric-sub" style="color:#3b82f6;">{best_accel_row['acceleratie_kmh']:.1f} km/h</div>
+    </div>""", unsafe_allow_html=True)
+with m4:
+    st.markdown(f"""
+    <div class="metric-card">
+        <div class="metric-label">&#127942; Snelste Speler</div>
+        <div class="metric-value">{best_top_row['naam']}</div>
+        <div class="metric-sub green">{best_top_row['max_snelheid_kmh']:.1f} km/h</div>
+    </div>""", unsafe_allow_html=True)
+
+col_sprint_scatter, col_sprint_bar = st.columns(2)
+
+# --- Acceleratie vs Topsnelheid (scatter) ---
+with col_sprint_scatter:
+    SPRINT_SCATTER_TRACES = []
+    for pos, color in POSITION_COLORS.items():
+        sub = df[df["positie"] == pos]
+        if sub.empty:
+            continue
+        SPRINT_SCATTER_TRACES.append({
+            "type": "scatter",
+            "mode": "markers",
+            "name": pos,
+            "x": sub["acceleratie_kmh"].tolist(),
+            "y": sub["max_snelheid_kmh"].tolist(),
+            "text": sub["naam"].tolist(),
+            "marker": {"color": color, "size": 10},
+            "hovertemplate": "%{text}<extra></extra>",
+        })
+
+    SPRINT_SCATTER_JSON = json.dumps(SPRINT_SCATTER_TRACES, ensure_ascii=False)
+
+    SPRINT_SCATTER_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; background: transparent; }
+    .card { background: #ffffff; border-radius: 14px; padding: 1.5rem 1.75rem; }
+    .card-title { color: #111827; font-size: 1.05rem; font-weight: 700; }
+    .card-subtitle { color: #9ca3af; font-size: 0.8rem; margin-bottom: 1rem; }
+    .insight-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-top: 1rem; }
+    .insight-box { border-radius: 10px; padding: 0.7rem 0.9rem; font-size: 0.78rem; }
+    .insight-title { font-weight: 700; font-size: 0.8rem; margin-bottom: 0.1rem; }
+    @media (max-width: 640px) {
+        .card { padding: 1.1rem 1.1rem; }
+        .insight-grid { grid-template-columns: 1fr; }
+    }
+</style>
+</head>
+<body>
+    <div class="card">
+        <div class="card-title">Acceleratie vs Topsnelheid</div>
+        <div class="card-subtitle">Sprinttijden analyse</div>
+        <div id="sprintScatter" style="width:100%; height:380px;"></div>
+        <div class="insight-grid">
+            <div class="insight-box" style="background-color:#dcfce7;">
+                <div class="insight-title" style="color:#166534;">Explosief &amp; snel</div>
+                <div style="color:#166534;">Hoge acceleratie + hoge topsnelheid</div>
+            </div>
+            <div class="insight-box" style="background-color:#ffedd5;">
+                <div class="insight-title" style="color:#9a3412;">Snel maar minder explosief</div>
+                <div style="color:#9a3412;">Lagere acceleratie + hoge topsnelheid</div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    var TRACES = __SPRINT_SCATTER_JSON__;
+
+    var layout = {
+        xaxis: { title: "Acceleratie (km/h)", automargin: true },
+        yaxis: { title: "Topsnelheid (km/h)", automargin: true },
+        height: 380,
+        margin: { l: 10, r: 10, t: 10, b: 10 },
+        legend: { orientation: "h", yanchor: "bottom", y: -0.35 },
+        paper_bgcolor: "white",
+        plot_bgcolor: "white",
+    };
+
+    Plotly.newPlot("sprintScatter", TRACES, layout, { displayModeBar: false, responsive: true });
+
+    function resizeFrame() {
+        var height = document.body.scrollHeight;
+        window.parent.postMessage({ type: "streamlit:setFrameHeight", height: height }, "*");
+    }
+    setTimeout(resizeFrame, 150);
+    window.addEventListener("load", resizeFrame);
+
+    var resizeTimer = null;
+    window.addEventListener("resize", function () {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function () {
+            Plotly.Plots.resize("sprintScatter");
+            resizeFrame();
+        }, 150);
+    });
+</script>
+</body>
+</html>
+"""
+
+    sprint_scatter_out = SPRINT_SCATTER_TEMPLATE.replace("__SPRINT_SCATTER_JSON__", SPRINT_SCATTER_JSON)
+    components.html(sprint_scatter_out, height=560, scrolling=False)
+
+# --- Acceleratie / Topsnelheid / Totaal (tabbed bar chart) ---
+with col_sprint_bar:
+    def build_tab(metric_col, avg_val):
+        sorted_df = df.sort_values(metric_col, ascending=False)
+        return {
+            "names": sorted_df["naam"].tolist(),
+            "values": [float(v) for v in sorted_df[metric_col]],
+            "colors": [POSITION_COLORS.get(p, "#6b7280") for p in sorted_df["positie"]],
+            "avg": avg_val,
+        }
+
+    TAB_DATA = {
+        "Acceleratie": build_tab("acceleratie_kmh", avg_accel),
+        "Topsnelheid": build_tab("max_snelheid_kmh", avg_top),
+        "Totaal": build_tab("totaal_snelheid", avg_totaal),
+    }
+    TAB_DATA_JSON = json.dumps(TAB_DATA, ensure_ascii=False)
+
+    SPRINT_BAR_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; background: transparent; }
+    .card { background: #ffffff; border-radius: 14px; padding: 1.5rem 1.75rem; }
+    .top-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.75rem; }
+    .card-title { color: #111827; font-size: 1.05rem; font-weight: 700; }
+    .card-subtitle { color: #9ca3af; font-size: 0.8rem; }
+    .toggle-wrap { display: flex; align-items: center; gap: 0.5rem; white-space: nowrap; }
+    .toggle-wrap label { font-size: 0.9rem; color: #111827; }
+    .tab-row { display: flex; gap: 0.5rem; margin: 0.75rem 0 1rem 0; flex-wrap: wrap; }
+    .tab-btn {
+        border: none; border-radius: 8px; padding: 0.4rem 0.9rem;
+        font-size: 0.85rem; font-weight: 600; cursor: pointer;
+        background: #f1f5f9; color: #475569;
+    }
+    .tab-btn.active { background: #4f46e5; color: #ffffff; }
+    @media (max-width: 640px) {
+        .card { padding: 1.1rem 1.1rem; }
+        .top-row { flex-direction: column; align-items: stretch; }
+    }
+</style>
+</head>
+<body>
+    <div class="card">
+        <div class="top-row">
+            <div>
+                <div class="card-title" id="chartTitle">Acceleratie (0-10m)</div>
+                <div class="card-subtitle">Per speler</div>
+            </div>
+            <div class="toggle-wrap">
+                <input type="checkbox" id="refToggle" checked />
+                <label for="refToggle">Referentielijn</label>
+            </div>
+        </div>
+        <div class="tab-row" id="tabRow"></div>
+        <div id="sprintBarChart" style="width:100%; height:430px;"></div>
+    </div>
+
+<script>
+    var TAB_DATA = __TAB_DATA_JSON__;
+    var TAB_TITLES = {
+        "Acceleratie": "Acceleratie (0-10m)",
+        "Topsnelheid": "Topsnelheid",
+        "Totaal": "Totaal (gemiddelde)",
+    };
+    var TAB_KEYS = ["Acceleratie", "Topsnelheid", "Totaal"];
+    var currentTab = "Acceleratie";
+    var currentOpacity = 1;
+
+    var refToggle = document.getElementById("refToggle");
+    var tabRow = document.getElementById("tabRow");
+    var chartTitle = document.getElementById("chartTitle");
+
+    TAB_KEYS.forEach(function (key) {
+        var btn = document.createElement("button");
+        btn.className = "tab-btn" + (key === currentTab ? " active" : "");
+        btn.textContent = key;
+        btn.dataset.key = key;
+        btn.addEventListener("click", function () {
+            if (currentTab === key) return;
+            currentTab = key;
+            Array.prototype.forEach.call(tabRow.children, function (el) {
+                el.classList.toggle("active", el.dataset.key === key);
+            });
+            chartTitle.textContent = TAB_TITLES[key];
+            renderBar();
+        });
+        tabRow.appendChild(btn);
+    });
+
+    function easeInOutCubic(t) {
+        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    }
+
+    var baseLayout = {
+        xaxis: { title: null, automargin: true },
+        yaxis: { title: null, autorange: "reversed", automargin: true },
+        height: 430,
+        margin: { l: 10, r: 20, t: 10, b: 30 },
+        paper_bgcolor: "white",
+        plot_bgcolor: "white",
+        transition: { duration: 500, easing: "cubic-in-out" },
+    };
+
+    function renderBar() {
+        var d = TAB_DATA[currentTab];
+        var shape = {
+            type: "line",
+            x0: d.avg, x1: d.avg,
+            y0: 0, y1: 1, yref: "paper",
+            line: { color: "#ef4444", width: 1.5, dash: "dash" },
+            opacity: currentOpacity,
+        };
+        var layout = Object.assign({}, baseLayout, { shapes: [shape] });
+        Plotly.react("sprintBarChart", [{
+            type: "bar",
+            orientation: "h",
+            x: d.values,
+            y: d.names,
+            marker: { color: d.colors },
+        }], layout, { displayModeBar: false, responsive: true });
+        resizeFrame();
+    }
+
+    function animateLineOpacity(target) {
+        var start = currentOpacity;
+        var duration = 400;
+        var startTime = null;
+        function step(ts) {
+            if (!startTime) startTime = ts;
+            var t = Math.min((ts - startTime) / duration, 1);
+            var eased = easeInOutCubic(t);
+            var val = start + (target - start) * eased;
+            Plotly.relayout("sprintBarChart", { "shapes[0].opacity": val });
+            if (t < 1) {
+                requestAnimationFrame(step);
+            } else {
+                currentOpacity = target;
+            }
+        }
+        requestAnimationFrame(step);
+    }
+
+    refToggle.addEventListener("change", function () {
+        animateLineOpacity(refToggle.checked ? 1 : 0);
+    });
+
+    function resizeFrame() {
+        var height = document.body.scrollHeight;
+        window.parent.postMessage({ type: "streamlit:setFrameHeight", height: height }, "*");
+    }
+
+    renderBar();
+    setTimeout(resizeFrame, 150);
+    window.addEventListener("load", resizeFrame);
+
+    var resizeTimer = null;
+    window.addEventListener("resize", function () {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function () {
+            Plotly.Plots.resize("sprintBarChart");
+            resizeFrame();
+        }, 150);
+    });
+</script>
+</body>
+</html>
+"""
+
+    sprint_bar_out = SPRINT_BAR_TEMPLATE.replace("__TAB_DATA_JSON__", TAB_DATA_JSON)
+    components.html(sprint_bar_out, height=650, scrolling=False)
