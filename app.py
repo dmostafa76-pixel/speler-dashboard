@@ -48,6 +48,11 @@ header {visibility: hidden;}
     color: #94a3b8;
     margin-bottom: 1.5rem;
 }
+@media (max-width: 640px) {
+    .top-navbar { padding: 0.85rem 1.25rem; }
+    .page-title { font-size: 1.35rem; }
+    .page-subtitle { font-size: 0.85rem; }
+}
 </style>
 
 <div class="top-navbar">
@@ -97,6 +102,22 @@ st.markdown("""
 
     div[data-testid="stCheckbox"] label p { color: #ffffff !important; }
     .white-card div[data-testid="stCheckbox"] label p { color: #374151 !important; }
+
+    /* --- Mobiel: alle st.columns() onder elkaar i.p.v. naast elkaar --- */
+    @media (max-width: 640px) {
+        div[data-testid="stHorizontalBlock"] {
+            flex-direction: column !important;
+        }
+        div[data-testid="stHorizontalBlock"] > div {
+            width: 100% !important;
+            min-width: 100% !important;
+        }
+        .block-container { padding-left: 1rem; padding-right: 1rem; }
+        .white-card, .metric-card { padding: 1.1rem 1.2rem; }
+        .dash-title { font-size: 1.3rem; }
+        .card-title { font-size: 0.95rem; }
+        .metric-value { font-size: 1.35rem; }
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -200,6 +221,7 @@ HTML_TEMPLATE = """
 <html>
 <head>
 <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
 <style>
     * { box-sizing: border-box; }
@@ -315,6 +337,17 @@ HTML_TEMPLATE = """
         color: #374151;
         margin-top: 1rem;
     }
+
+    /* --- Mobiel: alles onder elkaar, kleinere marges --- */
+    @media (max-width: 640px) {
+        .card { padding: 1.1rem 1.1rem; }
+        .top-row { flex-direction: column; align-items: stretch; gap: 0.75rem; }
+        .toggle-wrap { padding-top: 0; }
+        select { max-width: 100%; }
+        .content-row { flex-direction: column; gap: 1.25rem; }
+        .chart-col, .info-col { min-width: 100%; flex: 1 1 100%; }
+        #spiderChart { height: 340px !important; }
+    }
 </style>
 </head>
 <body>
@@ -368,16 +401,26 @@ HTML_TEMPLATE = """
         selectEl.appendChild(opt);
     });
 
-    var baseLayout = {
-        polar: {
-            radialaxis: { visible: true, range: [0, 100], gridcolor: "#e5e7eb" },
-        },
-        showlegend: false,
-        margin: { l: 40, r: 40, t: 20, b: 20 },
-        height: 420,
-        paper_bgcolor: "white",
-        plot_bgcolor: "white",
-    };
+    function isMobile() {
+        return window.innerWidth <= 640;
+    }
+
+    function getBaseLayout() {
+        var mobile = isMobile();
+        return {
+            polar: {
+                radialaxis: { visible: true, range: [0, 100], gridcolor: "#e5e7eb" },
+            },
+            showlegend: false,
+            margin: mobile
+                ? { l: 30, r: 30, t: 10, b: 10 }
+                : { l: 40, r: 40, t: 20, b: 20 },
+            height: mobile ? 340 : 420,
+            paper_bgcolor: "white",
+            plot_bgcolor: "white",
+        };
+    }
+    var baseLayout = getBaseLayout();
 
     var chartInitialized = false;
     var animRunning = false;
@@ -507,6 +550,10 @@ HTML_TEMPLATE = """
         }
         updateLegend(name, showTeam);
         updateInfoPanel(name);
+
+        if (typeof resizeFrame === "function") {
+            setTimeout(resizeFrame, 50);
+        }
     }
 
     selectEl.addEventListener("change", function () {
@@ -517,6 +564,30 @@ HTML_TEMPLATE = """
     });
 
     renderChart(DEFAULT_NAME);
+
+    // --- Iframe-hoogte automatisch laten meebewegen met de inhoud ---
+    // (voorkomt witruimte op desktop en afgesneden content op mobiel,
+    // waar de kolommen onder elkaar komen te staan)
+    function resizeFrame() {
+        var frame = window.frameElement;
+        if (frame) {
+            frame.style.height = document.body.scrollHeight + "px";
+        }
+    }
+    setTimeout(resizeFrame, 150);
+    window.addEventListener("load", resizeFrame);
+
+    // --- Bij resize/rotatie: layout herberekenen en iframe-hoogte updaten ---
+    var resizeTimer = null;
+    window.addEventListener("resize", function () {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function () {
+            baseLayout = getBaseLayout();
+            Plotly.relayout("spiderChart", baseLayout);
+            Plotly.Plots.resize("spiderChart");
+            resizeFrame();
+        }, 150);
+    });
 </script>
 </body>
 </html>
@@ -534,7 +605,9 @@ html_out = (
     .replace("__LABEL_OPTIONS_JSON__", LABEL_OPTIONS_JSON)
 )
 
-components.html(html_out, height=650, scrolling=False)
+# height is enkel een startwaarde; de JS in de component corrigeert dit
+# direct automatisch naar de werkelijke inhoud (zowel op desktop als mobiel)
+components.html(html_out, height=700, scrolling=False)
 
 # =============================================================================
 # SECTIE 2 — AGILITY ANALYSE
