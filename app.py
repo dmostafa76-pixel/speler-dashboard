@@ -562,25 +562,42 @@ HTML_TEMPLATE = """
         document.getElementById("legendBox").innerHTML = html;
     }
 
+    function safeId(cat) {
+        return cat.replace(/[^a-zA-Z0-9]/g, "");
+    }
+
+    // Bouwt de statbalken-structuur precies één keer op. Daarna wordt bij elke
+    // spelerwissel alleen de breedte/waarde van de bestáánde elementen aangepast
+    // (i.p.v. de HTML te vervangen), zodat de CSS-transitie op .stat-bar-fill
+    // daadwerkelijk kan animeren.
+    function initStatBars() {
+        var barsHtml = "";
+        CATEGORIES.forEach(function (cat) {
+            var label = STAT_LABELS[cat];
+            var color = STAT_COLORS[cat];
+            var id = safeId(cat);
+            barsHtml += (
+                '<div class="stat-row">' +
+                '<div class="stat-label-row"><span>' + label + '</span><span id="statval-' + id + '"></span></div>' +
+                '<div class="stat-bar-bg"><div class="stat-bar-fill" id="statfill-' + id + '" style="width:0%; background-color:' + color + ';"></div></div>' +
+                "</div>"
+            );
+        });
+        document.getElementById("statBars").innerHTML = barsHtml;
+    }
+
     function updateInfoPanel(name) {
         var p = PLAYERS[name];
         document.getElementById("playerName").textContent = name;
         document.getElementById("playerPos").textContent = p.positie;
 
-        var barsHtml = "";
         CATEGORIES.forEach(function (cat) {
-            var pct = p.scores[cat];
-            var value = p.raw[cat];
-            var color = STAT_COLORS[cat];
-            var label = STAT_LABELS[cat];
-            barsHtml += (
-                '<div class="stat-row">' +
-                '<div class="stat-label-row"><span>' + label + "</span><span>" + value + "</span></div>" +
-                '<div class="stat-bar-bg"><div class="stat-bar-fill" style="width:' + pct + '%; background-color:' + color + ';"></div></div>' +
-                "</div>"
-            );
+            var id = safeId(cat);
+            var valEl = document.getElementById("statval-" + id);
+            var fillEl = document.getElementById("statfill-" + id);
+            if (valEl) valEl.textContent = p.raw[cat];
+            if (fillEl) fillEl.style.width = p.scores[cat] + "%";
         });
-        document.getElementById("statBars").innerHTML = barsHtml;
     }
 
     function renderChart(name) {
@@ -608,6 +625,7 @@ HTML_TEMPLATE = """
         renderChart(selectEl.value);
     });
 
+    initStatBars();
     renderChart(DEFAULT_NAME);
 
     // --- Iframe-hoogte automatisch laten meebewegen met de inhoud ---
