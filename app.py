@@ -629,13 +629,12 @@ HTML_TEMPLATE = """
     renderChart(DEFAULT_NAME);
 
     // --- Iframe-hoogte automatisch laten meebewegen met de inhoud ---
-    // (voorkomt witruimte op desktop en afgesneden content op mobiel,
-    // waar de kolommen onder elkaar komen te staan)
+    // Gebruikt Streamlit's officiële resize-protocol (postMessage), zodat niet
+    // alleen de iframe zelf, maar ook de door Streamlit gereserveerde ruimte
+    // eromheen wordt aangepast — anders blijft er witruimte over.
     function resizeFrame() {
-        var frame = window.frameElement;
-        if (frame) {
-            frame.style.height = document.body.scrollHeight + "px";
-        }
+        var height = document.body.scrollHeight;
+        window.parent.postMessage({ type: "streamlit:setFrameHeight", height: height }, "*");
     }
     setTimeout(resizeFrame, 150);
     window.addEventListener("load", resizeFrame);
@@ -670,7 +669,7 @@ html_out = (
 
 # height is enkel een startwaarde; de JS in de component corrigeert dit
 # direct automatisch naar de werkelijke inhoud (zowel op desktop als mobiel)
-components.html(html_out, height=700, scrolling=False)
+components.html(html_out, height=600, scrolling=False)
 
 # =============================================================================
 # SECTIE 2 — AGILITY ANALYSE
@@ -827,8 +826,8 @@ with col_bar:
     });
 
     function resizeFrame() {
-        var frame = window.frameElement;
-        if (frame) frame.style.height = document.body.scrollHeight + "px";
+        var height = document.body.scrollHeight;
+        window.parent.postMessage({ type: "streamlit:setFrameHeight", height: height }, "*");
     }
     setTimeout(resizeFrame, 150);
     window.addEventListener("load", resizeFrame);
