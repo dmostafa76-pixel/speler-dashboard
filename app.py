@@ -34,7 +34,7 @@ header {visibility: hidden;}
     font-size: 0.55rem;
     font-weight: 600;
     letter-spacing: 0.15em;
-    color: #a5b4fc;
+    color: #ffffff;
     margin-top: 0.1rem;
 }
 .page-title {
