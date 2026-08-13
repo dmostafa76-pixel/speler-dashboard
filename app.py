@@ -889,12 +889,8 @@ with col_scatter:
     .card { background: #ffffff; border-radius: 14px; padding: 1.5rem 1.75rem; }
     .card-title { color: #111827; font-size: 1.05rem; font-weight: 700; }
     .card-subtitle { color: #9ca3af; font-size: 0.8rem; margin-bottom: 1rem; }
-    .quad-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-top: 1rem; }
-    .quad-box { border-radius: 10px; padding: 0.7rem 0.9rem; font-size: 0.78rem; }
-    .quad-title { font-weight: 700; font-size: 0.8rem; margin-bottom: 0.1rem; }
     @media (max-width: 640px) {
         .card { padding: 1.1rem 1.1rem; }
-        .quad-grid { grid-template-columns: 1fr; }
     }
 </style>
 </head>
@@ -903,24 +899,6 @@ with col_scatter:
         <div class="card-title">Agility Matrix</div>
         <div class="card-subtitle">Zonder bal vs. Met bal</div>
         <div id="scatterChart" style="width:100%; height:380px;"></div>
-        <div class="quad-grid">
-            <div class="quad-box" style="background-color:#dcfce7;">
-                <div class="quad-title" style="color:#166534;">Linksboven: Game Changer</div>
-                <div style="color:#166534;">Explosief + technisch sterk</div>
-            </div>
-            <div class="quad-box" style="background-color:#fee2e2;">
-                <div class="quad-title" style="color:#991b1b;">Rechtsonder: Probleem</div>
-                <div style="color:#991b1b;">Traag + slechte balcontrole</div>
-            </div>
-            <div class="quad-box" style="background-color:#dbeafe;">
-                <div class="quad-title" style="color:#1e40af;">Linksonder</div>
-                <div style="color:#1e40af;">Technisch sterk, minder wendbaar</div>
-            </div>
-            <div class="quad-box" style="background-color:#ffedd5;">
-                <div class="quad-title" style="color:#9a3412;">Rechtsboven</div>
-                <div style="color:#9a3412;">Wendbaar, balvaardigheid onder druk</div>
-            </div>
-        </div>
     </div>
 
 <script>
@@ -980,4 +958,4 @@ with col_scatter:
         .replace("__AVG_ZONDER_JSON__", AVG_ZONDER_SCATTER_JSON)
         .replace("__AVG_MET_JSON__", AVG_MET_JSON)
     )
-    components.html(scatter_html_out, height=650, scrolling=False)
+    components.html(scatter_html_out, height=480, scrolling=False)
