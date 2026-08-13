@@ -856,54 +856,128 @@ with col_bar:
 
 # --- Agility matrix (scatter) ---
 with col_scatter:
-    st.markdown('<div class="white-card">', unsafe_allow_html=True)
-    st.markdown('<div class="card-title">Agility Matrix</div>', unsafe_allow_html=True)
-    st.markdown('<div class="card-subtitle">Zonder bal vs. Met bal</div>', unsafe_allow_html=True)
-
-    scatter_fig = go.Figure()
+    SCATTER_TRACES = []
     for pos, color in POSITION_COLORS.items():
         sub = df[df["positie"] == pos]
         if sub.empty:
             continue
-        scatter_fig.add_trace(go.Scatter(
-            x=sub["agility_zonder_bal_s"], y=sub["agility_met_bal_s"],
-            mode="markers", marker=dict(color=color, size=10),
-            name=pos, text=sub["naam"], hovertemplate="%{text}<extra></extra>",
-        ))
-    scatter_fig.add_vline(x=avg_zonder, line_dash="dot", line_color="#d1d5db")
-    scatter_fig.add_hline(y=avg_met, line_dash="dot", line_color="#d1d5db")
-    scatter_fig.update_layout(
-        xaxis=dict(title="Agility Zonder Bal (s) →", autorange="reversed"),
-        yaxis=dict(title="Agility Met Bal (s) ↑", autorange="reversed"),
-        height=380,
-        margin=dict(l=10, r=10, t=10, b=10),
-        legend=dict(orientation="h", yanchor="bottom", y=-0.35),
-        paper_bgcolor="white", plot_bgcolor="white",
+        SCATTER_TRACES.append({
+            "type": "scatter",
+            "mode": "markers",
+            "name": pos,
+            "x": sub["agility_zonder_bal_s"].tolist(),
+            "y": sub["agility_met_bal_s"].tolist(),
+            "text": sub["naam"].tolist(),
+            "marker": {"color": color, "size": 10},
+            "hovertemplate": "%{text}<extra></extra>",
+        })
+
+    SCATTER_TRACES_JSON = json.dumps(SCATTER_TRACES, ensure_ascii=False)
+    AVG_ZONDER_SCATTER_JSON = json.dumps(float(avg_zonder), ensure_ascii=False)
+    AVG_MET_JSON = json.dumps(float(avg_met), ensure_ascii=False)
+
+    SCATTER_HTML_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; background: transparent; }
+    .card { background: #ffffff; border-radius: 14px; padding: 1.5rem 1.75rem; }
+    .card-title { color: #111827; font-size: 1.05rem; font-weight: 700; }
+    .card-subtitle { color: #9ca3af; font-size: 0.8rem; margin-bottom: 1rem; }
+    .quad-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-top: 1rem; }
+    .quad-box { border-radius: 10px; padding: 0.7rem 0.9rem; font-size: 0.78rem; }
+    .quad-title { font-weight: 700; font-size: 0.8rem; margin-bottom: 0.1rem; }
+    @media (max-width: 640px) {
+        .card { padding: 1.1rem 1.1rem; }
+        .quad-grid { grid-template-columns: 1fr; }
+    }
+</style>
+</head>
+<body>
+    <div class="card">
+        <div class="card-title">Agility Matrix</div>
+        <div class="card-subtitle">Zonder bal vs. Met bal</div>
+        <div id="scatterChart" style="width:100%; height:380px;"></div>
+        <div class="quad-grid">
+            <div class="quad-box" style="background-color:#dcfce7;">
+                <div class="quad-title" style="color:#166534;">Linksboven: Game Changer</div>
+                <div style="color:#166534;">Explosief + technisch sterk</div>
+            </div>
+            <div class="quad-box" style="background-color:#fee2e2;">
+                <div class="quad-title" style="color:#991b1b;">Rechtsonder: Probleem</div>
+                <div style="color:#991b1b;">Traag + slechte balcontrole</div>
+            </div>
+            <div class="quad-box" style="background-color:#dbeafe;">
+                <div class="quad-title" style="color:#1e40af;">Linksonder</div>
+                <div style="color:#1e40af;">Technisch sterk, minder wendbaar</div>
+            </div>
+            <div class="quad-box" style="background-color:#ffedd5;">
+                <div class="quad-title" style="color:#9a3412;">Rechtsboven</div>
+                <div style="color:#9a3412;">Wendbaar, balvaardigheid onder druk</div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    var TRACES = __SCATTER_TRACES_JSON__;
+    var AVG_ZONDER = __AVG_ZONDER_JSON__;
+    var AVG_MET = __AVG_MET_JSON__;
+
+    var layout = {
+        xaxis: { title: "Agility Zonder Bal (s) \\u2192", autorange: "reversed" },
+        yaxis: { title: "Agility Met Bal (s) \\u2191", autorange: "reversed" },
+        height: 380,
+        margin: { l: 10, r: 10, t: 10, b: 10 },
+        legend: { orientation: "h", yanchor: "bottom", y: -0.35 },
+        paper_bgcolor: "white",
+        plot_bgcolor: "white",
+        shapes: [
+            {
+                type: "line",
+                x0: AVG_ZONDER, x1: AVG_ZONDER,
+                y0: 0, y1: 1, yref: "paper",
+                line: { color: "#d1d5db", width: 1, dash: "dot" },
+            },
+            {
+                type: "line",
+                y0: AVG_MET, y1: AVG_MET,
+                x0: 0, x1: 1, xref: "paper",
+                line: { color: "#d1d5db", width: 1, dash: "dot" },
+            },
+        ],
+    };
+
+    Plotly.newPlot("scatterChart", TRACES, layout, { displayModeBar: false, responsive: true });
+
+    function resizeFrame() {
+        var height = document.body.scrollHeight;
+        window.parent.postMessage({ type: "streamlit:setFrameHeight", height: height }, "*");
+    }
+    setTimeout(resizeFrame, 150);
+    window.addEventListener("load", resizeFrame);
+
+    var resizeTimer = null;
+    window.addEventListener("resize", function () {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function () {
+            Plotly.Plots.resize("scatterChart");
+            resizeFrame();
+        }, 150);
+    });
+</script>
+</body>
+</html>
+"""
+
+    scatter_html_out = (
+        SCATTER_HTML_TEMPLATE
+        .replace("__SCATTER_TRACES_JSON__", SCATTER_TRACES_JSON)
+        .replace("__AVG_ZONDER_JSON__", AVG_ZONDER_SCATTER_JSON)
+        .replace("__AVG_MET_JSON__", AVG_MET_JSON)
     )
-    st.plotly_chart(scatter_fig, use_container_width=True)
-
-    q1, q2 = st.columns(2)
-    with q1:
-        st.markdown("""
-        <div class="quad-box" style="background-color:#dcfce7;">
-            <div class="quad-title" style="color:#166534;">Linksboven: Game Changer</div>
-            <div style="color:#166534;">Explosief + technisch sterk</div>
-        </div>""", unsafe_allow_html=True)
-        st.markdown("""
-        <div class="quad-box" style="background-color:#dbeafe;">
-            <div class="quad-title" style="color:#1e40af;">Linksonder</div>
-            <div style="color:#1e40af;">Technisch sterk, minder wendbaar</div>
-        </div>""", unsafe_allow_html=True)
-    with q2:
-        st.markdown("""
-        <div class="quad-box" style="background-color:#fee2e2;">
-            <div class="quad-title" style="color:#991b1b;">Rechtsonder: Probleem</div>
-            <div style="color:#991b1b;">Traag + slechte balcontrole</div>
-        </div>""", unsafe_allow_html=True)
-        st.markdown("""
-        <div class="quad-box" style="background-color:#ffedd5;">
-            <div class="quad-title" style="color:#9a3412;">Rechtsboven</div>
-            <div style="color:#9a3412;">Wendbaar, balvaardigheid onder druk</div>
-        </div>""", unsafe_allow_html=True)
-
-    st.markdown('</div>', unsafe_allow_html=True)
+    components.html(scatter_html_out, height=650, scrolling=False)
