@@ -7,6 +7,51 @@ import plotly.graph_objects as go
 
 st.set_page_config(page_title="Speler Prestatie Dashboard", layout="wide")
 
+# ---------------------------------------------------------------------------
+# Toegangscontrole via ondertekend token (afkomstig van WordPress)
+# ---------------------------------------------------------------------------
+import base64
+import hashlib
+import hmac
+import time
+
+
+def verify_club_token():
+    """Controleert het token in de URL (?token=...) en geeft de clubnaam terug
+    als het geldig en niet verlopen is. Anders wordt de app gestopt met een
+    duidelijke melding."""
+    query_params = st.query_params
+    token = query_params.get("token")
+
+    if not token:
+        st.error("Geen toegang: er ontbreekt een geldig toegangstoken. Log in via de website.")
+        st.stop()
+
+    try:
+        decoded = base64.b64decode(token.encode()).decode()
+        club, expiry_str, signature = decoded.rsplit("|", 2)
+    except Exception:
+        st.error("Ongeldig toegangstoken.")
+        st.stop()
+
+    secret = st.secrets["auth"]["token_secret"]
+    payload = f"{club}|{expiry_str}"
+    expected_signature = hmac.new(secret.encode(), payload.encode(), hashlib.sha256).hexdigest()
+
+    if not hmac.compare_digest(signature, expected_signature):
+        st.error("Ongeldig toegangstoken (handtekening klopt niet).")
+        st.stop()
+
+    if int(expiry_str) < time.time():
+        st.error("Je sessie is verlopen. Ga terug naar de website en probeer opnieuw.")
+        st.stop()
+
+    return club
+
+
+CURRENT_CLUB = verify_club_token()
+
+
 st.markdown("""
 <style>
 /* Verberg Streamlit's eigen header/menu voor een clean look */
@@ -173,6 +218,12 @@ def load_data():
     return raw
 
 df = load_data()
+
+if "club" in df.columns:
+    df = df[df["club"].str.lower() == CURRENT_CLUB.lower()].reset_index(drop=True)
+    if df.empty:
+        st.error(f"Geen data gevonden voor club '{CURRENT_CLUB}'.")
+        st.stop()
 
 POSITION_COLORS = {
     "Attacker": "#ef4444",
@@ -714,19 +765,17 @@ with c4:
         <div class="metric-sub red">{worst_row['agility_zonder_bal_s']:.2f}s</div>
     </div>""", unsafe_allow_html=True)
 
-col_bar, col_scatter = st.columns(2)
 
 # --- Agility per speler (bar chart) ---
-with col_bar:
-    sorted_df = df.sort_values("agility_zonder_bal_s")
-    colors = [POSITION_COLORS.get(p, "#6b7280") for p in sorted_df["positie"]]
+sorted_df = df.sort_values("agility_zonder_bal_s")
+colors = [POSITION_COLORS.get(p, "#6b7280") for p in sorted_df["positie"]]
 
-    BAR_NAMES_JSON = json.dumps(sorted_df["naam"].tolist(), ensure_ascii=False)
-    BAR_VALUES_JSON = json.dumps([float(v) for v in sorted_df["agility_zonder_bal_s"]], ensure_ascii=False)
-    BAR_COLORS_JSON = json.dumps(colors, ensure_ascii=False)
-    AVG_ZONDER_JSON = json.dumps(float(avg_zonder), ensure_ascii=False)
+BAR_NAMES_JSON = json.dumps(sorted_df["naam"].tolist(), ensure_ascii=False)
+BAR_VALUES_JSON = json.dumps([float(v) for v in sorted_df["agility_zonder_bal_s"]], ensure_ascii=False)
+BAR_COLORS_JSON = json.dumps(colors, ensure_ascii=False)
+AVG_ZONDER_JSON = json.dumps(float(avg_zonder), ensure_ascii=False)
 
-    BAR_HTML_TEMPLATE = """
+BAR_HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
@@ -734,232 +783,126 @@ with col_bar:
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
 <style>
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; background: transparent; }
-    .card { background: #ffffff; border-radius: 14px; padding: 1.5rem 1.75rem; }
-    .top-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.75rem; }
-    .card-title { color: #111827; font-size: 1.05rem; font-weight: 700; }
-    .card-subtitle { color: #9ca3af; font-size: 0.8rem; }
-    .toggle-wrap { display: flex; align-items: center; gap: 0.5rem; white-space: nowrap; }
-    .toggle-wrap label { font-size: 0.9rem; color: #111827; }
-    @media (max-width: 640px) {
-        .card { padding: 1.1rem 1.1rem; }
-        .top-row { flex-direction: column; align-items: stretch; }
-    }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; background: transparent; }
+.card { background: #ffffff; border-radius: 14px; padding: 1.5rem 1.75rem; }
+.top-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.75rem; }
+.card-title { color: #111827; font-size: 1.05rem; font-weight: 700; }
+.card-subtitle { color: #9ca3af; font-size: 0.8rem; }
+.toggle-wrap { display: flex; align-items: center; gap: 0.5rem; white-space: nowrap; }
+.toggle-wrap label { font-size: 0.9rem; color: #111827; }
+@media (max-width: 640px) {
+    .card { padding: 1.1rem 1.1rem; }
+    .top-row { flex-direction: column; align-items: stretch; }
+}
 </style>
 </head>
 <body>
-    <div class="card">
-        <div class="top-row">
-            <div>
-                <div class="card-title">Agility per Speler</div>
-                <div class="card-subtitle">Gesorteerd op prestatie (lager is beter)</div>
-            </div>
-            <div class="toggle-wrap">
-                <input type="checkbox" id="refToggle" checked />
-                <label for="refToggle">Referentielijn</label>
-            </div>
+<div class="card">
+    <div class="top-row">
+        <div>
+            <div class="card-title">Agility per Speler</div>
+            <div class="card-subtitle">Gesorteerd op prestatie (lager is beter)</div>
         </div>
-        <div id="barChart" style="width:100%; height:430px;"></div>
+        <div class="toggle-wrap">
+            <input type="checkbox" id="refToggle" checked />
+            <label for="refToggle">Referentielijn</label>
+        </div>
     </div>
+    <div id="barChart" style="width:100%; height:430px;"></div>
+</div>
 
 <script>
-    var NAMES = __BAR_NAMES_JSON__;
-    var VALUES = __BAR_VALUES_JSON__;
-    var COLORS = __BAR_COLORS_JSON__;
-    var AVG = __AVG_ZONDER_JSON__;
+var NAMES = __BAR_NAMES_JSON__;
+var VALUES = __BAR_VALUES_JSON__;
+var COLORS = __BAR_COLORS_JSON__;
+var AVG = __AVG_ZONDER_JSON__;
 
-    var refToggle = document.getElementById("refToggle");
+var refToggle = document.getElementById("refToggle");
 
-    function easeInOutCubic(t) {
-        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-    }
+function easeInOutCubic(t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
 
-    var layout = {
-        xaxis: { title: null, automargin: true },
-        yaxis: { title: null, autorange: "reversed", automargin: true },
-        height: 430,
-        margin: { l: 10, r: 20, t: 10, b: 30 },
-        paper_bgcolor: "white",
-        plot_bgcolor: "white",
-        shapes: [{
-            type: "line",
-            x0: AVG, x1: AVG,
-            y0: 0, y1: 1,
-            yref: "paper",
-            line: { color: "#9ca3af", width: 1.5, dash: "dash" },
-            opacity: 1,
-        }],
-    };
+var layout = {
+    xaxis: { title: null, automargin: true },
+    yaxis: { title: null, autorange: "reversed", automargin: true },
+    height: 430,
+    margin: { l: 10, r: 20, t: 10, b: 30 },
+    paper_bgcolor: "white",
+    plot_bgcolor: "white",
+    shapes: [{
+        type: "line",
+        x0: AVG, x1: AVG,
+        y0: 0, y1: 1,
+        yref: "paper",
+        line: { color: "#9ca3af", width: 1.5, dash: "dash" },
+        opacity: 1,
+    }],
+};
 
-    Plotly.newPlot("barChart", [{
-        type: "bar",
-        orientation: "h",
-        x: VALUES,
-        y: NAMES,
-        marker: { color: COLORS },
-    }], layout, { displayModeBar: false, responsive: true });
+Plotly.newPlot("barChart", [{
+    type: "bar",
+    orientation: "h",
+    x: VALUES,
+    y: NAMES,
+    marker: { color: COLORS },
+}], layout, { displayModeBar: false, responsive: true });
 
-    var currentOpacity = 1;
+var currentOpacity = 1;
 
-    function animateLineOpacity(target) {
-        var start = currentOpacity;
-        var duration = 400;
-        var startTime = null;
+function animateLineOpacity(target) {
+    var start = currentOpacity;
+    var duration = 400;
+    var startTime = null;
 
-        function step(ts) {
-            if (!startTime) startTime = ts;
-            var t = Math.min((ts - startTime) / duration, 1);
-            var eased = easeInOutCubic(t);
-            var val = start + (target - start) * eased;
-            Plotly.relayout("barChart", { "shapes[0].opacity": val });
-            if (t < 1) {
-                requestAnimationFrame(step);
-            } else {
-                currentOpacity = target;
-            }
+    function step(ts) {
+        if (!startTime) startTime = ts;
+        var t = Math.min((ts - startTime) / duration, 1);
+        var eased = easeInOutCubic(t);
+        var val = start + (target - start) * eased;
+        Plotly.relayout("barChart", { "shapes[0].opacity": val });
+        if (t < 1) {
+            requestAnimationFrame(step);
+        } else {
+            currentOpacity = target;
         }
-        requestAnimationFrame(step);
     }
+    requestAnimationFrame(step);
+}
 
-    refToggle.addEventListener("change", function () {
-        animateLineOpacity(refToggle.checked ? 1 : 0);
-    });
+refToggle.addEventListener("change", function () {
+    animateLineOpacity(refToggle.checked ? 1 : 0);
+});
 
-    function resizeFrame() {
-        var height = document.body.scrollHeight;
-        window.parent.postMessage({ type: "streamlit:setFrameHeight", height: height }, "*");
-    }
-    setTimeout(resizeFrame, 150);
-    window.addEventListener("load", resizeFrame);
+function resizeFrame() {
+    var height = document.body.scrollHeight;
+    window.parent.postMessage({ type: "streamlit:setFrameHeight", height: height }, "*");
+}
+setTimeout(resizeFrame, 150);
+window.addEventListener("load", resizeFrame);
 
-    var resizeTimer = null;
-    window.addEventListener("resize", function () {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(function () {
-            Plotly.Plots.resize("barChart");
-            resizeFrame();
-        }, 150);
-    });
+var resizeTimer = null;
+window.addEventListener("resize", function () {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () {
+        Plotly.Plots.resize("barChart");
+        resizeFrame();
+    }, 150);
+});
 </script>
 </body>
 </html>
 """
 
-    bar_html_out = (
-        BAR_HTML_TEMPLATE
-        .replace("__BAR_NAMES_JSON__", BAR_NAMES_JSON)
-        .replace("__BAR_VALUES_JSON__", BAR_VALUES_JSON)
-        .replace("__BAR_COLORS_JSON__", BAR_COLORS_JSON)
-        .replace("__AVG_ZONDER_JSON__", AVG_ZONDER_JSON)
-    )
-    components.html(bar_html_out, height=560, scrolling=False)
-
-# --- Agility matrix (scatter) ---
-with col_scatter:
-    SCATTER_TRACES = []
-    for pos, color in POSITION_COLORS.items():
-        sub = df[df["positie"] == pos]
-        if sub.empty:
-            continue
-        SCATTER_TRACES.append({
-            "type": "scatter",
-            "mode": "markers",
-            "name": pos,
-            "x": sub["agility_zonder_bal_s"].tolist(),
-            "y": sub["agility_met_bal_s"].tolist(),
-            "text": sub["naam"].tolist(),
-            "marker": {"color": color, "size": 10},
-            "hovertemplate": "%{text}<extra></extra>",
-        })
-
-    SCATTER_TRACES_JSON = json.dumps(SCATTER_TRACES, ensure_ascii=False)
-    AVG_ZONDER_SCATTER_JSON = json.dumps(float(avg_zonder), ensure_ascii=False)
-    AVG_MET_JSON = json.dumps(float(avg_met), ensure_ascii=False)
-
-    SCATTER_HTML_TEMPLATE = """
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-<style>
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; background: transparent; }
-    .card { background: #ffffff; border-radius: 14px; padding: 1.5rem 1.75rem; }
-    .card-title { color: #111827; font-size: 1.05rem; font-weight: 700; }
-    .card-subtitle { color: #9ca3af; font-size: 0.8rem; margin-bottom: 1rem; }
-    @media (max-width: 640px) {
-        .card { padding: 1.1rem 1.1rem; }
-    }
-</style>
-</head>
-<body>
-    <div class="card">
-        <div class="card-title">Agility Matrix</div>
-        <div class="card-subtitle">Zonder bal vs. Met bal</div>
-        <div id="scatterChart" style="width:100%; height:380px;"></div>
-    </div>
-
-<script>
-    var TRACES = __SCATTER_TRACES_JSON__;
-    var AVG_ZONDER = __AVG_ZONDER_JSON__;
-    var AVG_MET = __AVG_MET_JSON__;
-
-    var layout = {
-        xaxis: { title: "Agility Zonder Bal (s) \\u2192", autorange: "reversed" },
-        yaxis: { title: "Agility Met Bal (s) \\u2191", autorange: "reversed" },
-        height: 380,
-        margin: { l: 10, r: 10, t: 10, b: 10 },
-        legend: { orientation: "h", yanchor: "bottom", y: -0.35 },
-        paper_bgcolor: "white",
-        plot_bgcolor: "white",
-        shapes: [
-            {
-                type: "line",
-                x0: AVG_ZONDER, x1: AVG_ZONDER,
-                y0: 0, y1: 1, yref: "paper",
-                line: { color: "#d1d5db", width: 1, dash: "dot" },
-            },
-            {
-                type: "line",
-                y0: AVG_MET, y1: AVG_MET,
-                x0: 0, x1: 1, xref: "paper",
-                line: { color: "#d1d5db", width: 1, dash: "dot" },
-            },
-        ],
-    };
-
-    Plotly.newPlot("scatterChart", TRACES, layout, { displayModeBar: false, responsive: true });
-
-    function resizeFrame() {
-        var height = document.body.scrollHeight;
-        window.parent.postMessage({ type: "streamlit:setFrameHeight", height: height }, "*");
-    }
-    setTimeout(resizeFrame, 150);
-    window.addEventListener("load", resizeFrame);
-
-    var resizeTimer = null;
-    window.addEventListener("resize", function () {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(function () {
-            Plotly.Plots.resize("scatterChart");
-            resizeFrame();
-        }, 150);
-    });
-</script>
-</body>
-</html>
-"""
-
-    scatter_html_out = (
-        SCATTER_HTML_TEMPLATE
-        .replace("__SCATTER_TRACES_JSON__", SCATTER_TRACES_JSON)
-        .replace("__AVG_ZONDER_JSON__", AVG_ZONDER_SCATTER_JSON)
-        .replace("__AVG_MET_JSON__", AVG_MET_JSON)
-    )
-    components.html(scatter_html_out, height=480, scrolling=False)
+bar_html_out = (
+    BAR_HTML_TEMPLATE
+    .replace("__BAR_NAMES_JSON__", BAR_NAMES_JSON)
+    .replace("__BAR_VALUES_JSON__", BAR_VALUES_JSON)
+    .replace("__BAR_COLORS_JSON__", BAR_COLORS_JSON)
+    .replace("__AVG_ZONDER_JSON__", AVG_ZONDER_JSON)
+)
+components.html(bar_html_out, height=560, scrolling=False)
 
 # =============================================================================
 # SECTIE 3 — SPRINT ANALYSE
