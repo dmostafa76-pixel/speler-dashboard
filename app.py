@@ -144,6 +144,7 @@ def load_data():
         norm("Agilitiy Time (sec)"): "agility_zonder_bal_s",
         norm("DribbelingTime (sec)"): "agility_met_bal_s",
         norm("Distance (m)"): "afstand_m",
+        norm("Explosive Power (watt)"): "power_watt",
     }
 
     rename_dict = {}
@@ -1272,3 +1273,202 @@ with col_sprint_bar:
 
     sprint_bar_out = SPRINT_BAR_TEMPLATE.replace("__TAB_DATA_JSON__", TAB_DATA_JSON)
     components.html(sprint_bar_out, height=650, scrolling=False)
+
+# =============================================================================
+# SECTIE 4 — SPRONG ANALYSE
+# =============================================================================
+st.markdown('<div class="dash-title">Sprong Analyse</div>', unsafe_allow_html=True)
+st.markdown('<div class="dash-subtitle">Verticale sprong en explosieve kracht</div>', unsafe_allow_html=True)
+st.markdown('<div class="badge-pill">Test: Vertical Jump Test</div>', unsafe_allow_html=True)
+
+# NB: "Norm" hieronder is een aanname (25 cm), afgestemd op de schaal van de
+# huidige pilot-data. Pas dit aan zodra er een officiële norm-waarde bekend is.
+NORM_CM = 25
+avg_sprong = float(df["sprong_cm"].mean())
+best_sprong_row = df.loc[df["sprong_cm"].idxmax()]
+aantal_onder_norm = int((df["sprong_cm"] < NORM_CM).sum())
+pct_onder_norm = float((df["sprong_cm"] < NORM_CM).mean() * 100)
+
+j1, j2, j3 = st.columns(3)
+with j1:
+    st.markdown(f"""
+    <div class="metric-card">
+        <div class="metric-label">Gem. Vertical Jump</div>
+        <div class="metric-value">{avg_sprong:.0f} cm</div>
+        <div class="metric-sub">Team gemiddelde</div>
+    </div>""", unsafe_allow_html=True)
+with j2:
+    st.markdown(f"""
+    <div class="metric-card">
+        <div class="metric-label">&#127942; Beste Sprong</div>
+        <div class="metric-value">{best_sprong_row['naam']}</div>
+        <div class="metric-sub green">{best_sprong_row['sprong_cm']:.0f} cm</div>
+    </div>""", unsafe_allow_html=True)
+with j3:
+    st.markdown(f"""
+    <div class="metric-card">
+        <div class="metric-label">&#128200; % Spelers Onder Norm</div>
+        <div class="metric-value">{pct_onder_norm:.0f}%</div>
+        <div class="metric-sub">{aantal_onder_norm} van {len(df)} spelers (norm: {NORM_CM}cm)</div>
+    </div>""", unsafe_allow_html=True)
+
+# --- Verticale Sprong per Speler (bar chart, kleur o.b.v. Explosive Power) ---
+if "power_watt" in df.columns:
+    power_tier = pd.qcut(df["power_watt"], q=3, labels=["Lage Power", "Gemiddelde Power", "Hoge Power"])
+else:
+    power_tier = pd.Series(["Gemiddelde Power"] * len(df), index=df.index)
+
+TIER_COLORS = {
+    "Lage Power": "#ef4444",
+    "Gemiddelde Power": "#f59e0b",
+    "Hoge Power": "#22c55e",
+}
+
+jump_df = df.copy()
+jump_df["power_tier"] = power_tier
+jump_df = jump_df.sort_values("sprong_cm", ascending=False)
+
+JUMP_NAMES_JSON = json.dumps(jump_df["naam"].tolist(), ensure_ascii=False)
+JUMP_VALUES_JSON = json.dumps([float(v) for v in jump_df["sprong_cm"]], ensure_ascii=False)
+JUMP_COLORS_JSON = json.dumps(
+    [TIER_COLORS.get(t, "#6b7280") for t in jump_df["power_tier"]], ensure_ascii=False
+)
+AVG_SPRONG_JSON = json.dumps(avg_sprong, ensure_ascii=False)
+
+JUMP_HTML_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; background: transparent; }
+    .card { background: #ffffff; border-radius: 14px; padding: 1.5rem 1.75rem; }
+    .top-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem; }
+    .card-title { color: #111827; font-size: 1.05rem; font-weight: 700; }
+    .card-subtitle { color: #9ca3af; font-size: 0.8rem; }
+    .toggle-wrap { display: flex; align-items: center; gap: 0.5rem; white-space: nowrap; }
+    .toggle-wrap label { font-size: 0.9rem; color: #111827; }
+    .legend { display: flex; gap: 1.5rem; justify-content: center; font-size: 0.85rem; color: #374151; margin-top: 0.75rem; flex-wrap: wrap; }
+    .legend span.dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; }
+    @media (max-width: 640px) {
+        .card { padding: 1.1rem 1.1rem; }
+        .top-row { flex-direction: column; align-items: stretch; }
+    }
+</style>
+</head>
+<body>
+    <div class="card">
+        <div class="top-row">
+            <div>
+                <div class="card-title">Verticale Sprong per Speler</div>
+                <div class="card-subtitle">Kleur gebaseerd op explosieve kracht</div>
+            </div>
+            <div class="toggle-wrap">
+                <input type="checkbox" id="avgToggle" checked />
+                <label for="avgToggle">Team Gemiddelde</label>
+            </div>
+        </div>
+        <div id="jumpChart" style="width:100%; height:480px;"></div>
+        <div class="legend">
+            <div><span class="dot" style="background:#ef4444;"></span>Lage Power</div>
+            <div><span class="dot" style="background:#f59e0b;"></span>Gemiddelde Power</div>
+            <div><span class="dot" style="background:#22c55e;"></span>Hoge Power</div>
+        </div>
+    </div>
+
+<script>
+    var NAMES = __JUMP_NAMES_JSON__;
+    var VALUES = __JUMP_VALUES_JSON__;
+    var COLORS = __JUMP_COLORS_JSON__;
+    var AVG = __AVG_SPRONG_JSON__;
+
+    var avgToggle = document.getElementById("avgToggle");
+    var currentOpacity = 1;
+
+    function easeInOutCubic(t) {
+        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    }
+
+    var layout = {
+        xaxis: { title: null, automargin: true, ticksuffix: " cm" },
+        yaxis: { title: null, autorange: "reversed", automargin: true },
+        height: 480,
+        margin: { l: 10, r: 20, t: 10, b: 30 },
+        paper_bgcolor: "white",
+        plot_bgcolor: "white",
+        shapes: [{
+            type: "line",
+            x0: AVG, x1: AVG,
+            y0: 0, y1: 1, yref: "paper",
+            line: { color: "#6366f1", width: 1.5, dash: "dash" },
+            opacity: 1,
+        }],
+        annotations: [{
+            x: AVG, y: 1, yref: "paper", yanchor: "bottom",
+            text: "Gem.", showarrow: false,
+            font: { size: 11, color: "#6366f1" },
+        }],
+    };
+
+    Plotly.newPlot("jumpChart", [{
+        type: "bar",
+        orientation: "h",
+        x: VALUES,
+        y: NAMES,
+        marker: { color: COLORS },
+    }], layout, { displayModeBar: false, responsive: true });
+
+    function animateLineOpacity(target) {
+        var start = currentOpacity;
+        var duration = 400;
+        var startTime = null;
+        function step(ts) {
+            if (!startTime) startTime = ts;
+            var t = Math.min((ts - startTime) / duration, 1);
+            var eased = easeInOutCubic(t);
+            var val = start + (target - start) * eased;
+            Plotly.relayout("jumpChart", { "shapes[0].opacity": val });
+            if (t < 1) {
+                requestAnimationFrame(step);
+            } else {
+                currentOpacity = target;
+            }
+        }
+        requestAnimationFrame(step);
+    }
+
+    avgToggle.addEventListener("change", function () {
+        animateLineOpacity(avgToggle.checked ? 1 : 0);
+    });
+
+    function resizeFrame() {
+        var height = document.body.scrollHeight;
+        window.parent.postMessage({ type: "streamlit:setFrameHeight", height: height }, "*");
+    }
+    setTimeout(resizeFrame, 150);
+    window.addEventListener("load", resizeFrame);
+
+    var resizeTimer = null;
+    window.addEventListener("resize", function () {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function () {
+            Plotly.Plots.resize("jumpChart");
+            resizeFrame();
+        }, 150);
+    });
+</script>
+</body>
+</html>
+"""
+
+jump_html_out = (
+    JUMP_HTML_TEMPLATE
+    .replace("__JUMP_NAMES_JSON__", JUMP_NAMES_JSON)
+    .replace("__JUMP_VALUES_JSON__", JUMP_VALUES_JSON)
+    .replace("__JUMP_COLORS_JSON__", JUMP_COLORS_JSON)
+    .replace("__AVG_SPRONG_JSON__", AVG_SPRONG_JSON)
+)
+components.html(jump_html_out, height=620, scrolling=False)
