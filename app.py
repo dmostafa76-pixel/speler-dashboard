@@ -7,50 +7,6 @@ import plotly.graph_objects as go
 
 st.set_page_config(page_title="Speler Prestatie Dashboard", layout="wide")
 
-# ---------------------------------------------------------------------------
-# Toegangscontrole via ondertekend token (afkomstig van WordPress)
-# ---------------------------------------------------------------------------
-import base64
-import hashlib
-import hmac
-import time
-
-
-def verify_club_token():
-    """Controleert het token in de URL (?token=...) en geeft de clubnaam terug
-    als het geldig en niet verlopen is. Anders wordt de app gestopt met een
-    duidelijke melding."""
-    query_params = st.query_params
-    token = query_params.get("token")
-
-    if not token:
-        st.error("Geen toegang: er ontbreekt een geldig toegangstoken. Log in via de website.")
-        st.stop()
-
-    try:
-        decoded = base64.b64decode(token.encode()).decode()
-        club, expiry_str, signature = decoded.rsplit("|", 2)
-    except Exception:
-        st.error("Ongeldig toegangstoken.")
-        st.stop()
-
-    secret = st.secrets["auth"]["token_secret"]
-    payload = f"{club}|{expiry_str}"
-    expected_signature = hmac.new(secret.encode(), payload.encode(), hashlib.sha256).hexdigest()
-
-    if not hmac.compare_digest(signature, expected_signature):
-        st.error("Ongeldig toegangstoken (handtekening klopt niet).")
-        st.stop()
-
-    if int(expiry_str) < time.time():
-        st.error("Je sessie is verlopen. Ga terug naar de website en probeer opnieuw.")
-        st.stop()
-
-    return club
-
-
-CURRENT_CLUB = verify_club_token()
-
 
 st.markdown("""
 <style>
@@ -218,12 +174,6 @@ def load_data():
     return raw
 
 df = load_data()
-
-if "club" in df.columns:
-    df = df[df["club"].str.lower() == CURRENT_CLUB.lower()].reset_index(drop=True)
-    if df.empty:
-        st.error(f"Geen data gevonden voor club '{CURRENT_CLUB}'.")
-        st.stop()
 
 POSITION_COLORS = {
     "Attacker": "#ef4444",
