@@ -145,6 +145,9 @@ def load_data():
 
 df = load_data()
 
+st.write("Kolommen in CSV:", df.columns.tolist())
+st.stop()
+
 POSITION_COLORS = {
     "Aanvaller": "#ef4444",
     "Middenvelder": "#3b82f6",
