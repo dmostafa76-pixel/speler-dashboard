@@ -1046,12 +1046,8 @@ with col_sprint_scatter:
     .card { background: #ffffff; border-radius: 14px; padding: 1.5rem 1.75rem; }
     .card-title { color: #111827; font-size: 1.05rem; font-weight: 700; }
     .card-subtitle { color: #9ca3af; font-size: 0.8rem; margin-bottom: 1rem; }
-    .insight-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-top: 1rem; }
-    .insight-box { border-radius: 10px; padding: 0.7rem 0.9rem; font-size: 0.78rem; }
-    .insight-title { font-weight: 700; font-size: 0.8rem; margin-bottom: 0.1rem; }
     @media (max-width: 640px) {
         .card { padding: 1.1rem 1.1rem; }
-        .insight-grid { grid-template-columns: 1fr; }
     }
 </style>
 </head>
@@ -1060,16 +1056,6 @@ with col_sprint_scatter:
         <div class="card-title">Acceleratie vs Topsnelheid</div>
         <div class="card-subtitle">Sprinttijden analyse</div>
         <div id="sprintScatter" style="width:100%; height:380px;"></div>
-        <div class="insight-grid">
-            <div class="insight-box" style="background-color:#dcfce7;">
-                <div class="insight-title" style="color:#166534;">Explosief &amp; snel</div>
-                <div style="color:#166534;">Hoge acceleratie + hoge topsnelheid</div>
-            </div>
-            <div class="insight-box" style="background-color:#ffedd5;">
-                <div class="insight-title" style="color:#9a3412;">Snel maar minder explosief</div>
-                <div style="color:#9a3412;">Lagere acceleratie + hoge topsnelheid</div>
-            </div>
-        </div>
     </div>
 
 <script>
@@ -1108,7 +1094,7 @@ with col_sprint_scatter:
 """
 
     sprint_scatter_out = SPRINT_SCATTER_TEMPLATE.replace("__SPRINT_SCATTER_JSON__", SPRINT_SCATTER_JSON)
-    components.html(sprint_scatter_out, height=560, scrolling=False)
+    components.html(sprint_scatter_out, height=470, scrolling=False)
 
 # --- Acceleratie / Topsnelheid / Totaal (tabbed bar chart) ---
 with col_sprint_bar:
