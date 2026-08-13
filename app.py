@@ -17,7 +17,7 @@ header {visibility: hidden;}
 .top-navbar {
     display: flex;
     align-items: center;
-    background-color: #1e1b3a;
+    background-color: #12172c;
     padding: 1rem 2rem;
     margin: -1rem -1rem 1.5rem -1rem;
 }
