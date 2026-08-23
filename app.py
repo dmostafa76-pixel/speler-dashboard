@@ -8,6 +8,7 @@ from data_utils import normalize_players_df   # <-- toevoegen
 
 
 st.set_page_config(page_title="Speler Prestatie Dashboard", layout="wide")
+st.page_link("pages/1_Upload_Data.py", label="Upload nieuwe testdata", icon="📤")
 
 
 st.markdown("""
