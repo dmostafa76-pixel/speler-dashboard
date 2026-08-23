@@ -4,6 +4,8 @@ import streamlit.components.v1 as components
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
+from data_utils import normalize_players_df   # <-- toevoegen
+
 
 st.set_page_config(page_title="Speler Prestatie Dashboard", layout="wide")
 
@@ -134,50 +136,16 @@ st.markdown("""
 @st.cache_data
 def load_data():
     raw = pd.read_csv("data/players.csv")
+    clean, missing_required, _unused = normalize_players_df(raw)
 
-    # Kolomnamen "normaliseren" (spaties weg, kleine letters) zodat kleine
-    # verschillen in de brondata (extra spatie, hoofdletter, etc.) de app
-    # niet meer breken.
-    def norm(col):
-        return "".join(ch for ch in col.lower() if ch.isalnum())
-
-    # target: genormaliseerde brontekst -> interne naam
-    column_map = {
-        norm("Player Name"): "naam",
-        norm("Prefered Position"): "positie",
-        norm("Acc speed (km/h)"): "acceleratie_kmh",
-        norm("Top speed (km/h)"): "max_snelheid_kmh",
-        norm("Jump height (cm)"): "sprong_cm",
-        norm("Agilitiy Time (sec)"): "agility_zonder_bal_s",
-        norm("DribbelingTime (sec)"): "agility_met_bal_s",
-        norm("Distance (m)"): "afstand_m",
-        norm("Explosive Power (watt)"): "power_watt",
-    }
-
-    rename_dict = {}
-    for original_col in raw.columns:
-        key = norm(original_col)
-        if key in column_map:
-            rename_dict[original_col] = column_map[key]
-
-    raw = raw.rename(columns=rename_dict)
-
-    if "positie" in raw.columns:
-        raw["positie"] = raw["positie"].astype(str).str.strip()
-
-    required = [
-        "naam", "positie", "acceleratie_kmh", "max_snelheid_kmh",
-        "sprong_cm", "agility_zonder_bal_s", "agility_met_bal_s", "afstand_m",
-    ]
-    missing = [c for c in required if c not in raw.columns]
-    if missing:
+    if missing_required:
         st.error(
             "Deze verwachte kolommen zijn niet gevonden in players.csv: "
-            f"{missing}. Gevonden kolommen in het bestand: {raw.columns.tolist()}"
+            f"{missing_required}. Gevonden kolommen in het bestand: {raw.columns.tolist()}"
         )
         st.stop()
 
-    return raw
+    return clean
 
 df = load_data()
 
