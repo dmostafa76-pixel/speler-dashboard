@@ -36,7 +36,7 @@ TEAM_SLUG = st.session_state.coach_team_slug
 TEAM_NAME = st.session_state.coach_team_name
 
 
-st.markdown("""
+_navbar_html = """
 <style>
 /* Verberg Streamlit's eigen header/menu voor een clean look */
 #MainMenu {visibility: hidden;}
@@ -96,12 +96,13 @@ header {visibility: hidden;}
 
 <div class="page-title">__TEAM_NAME__ — 1e Testmoment</div>
 <div class="page-subtitle">Overzicht van alle prestatiegegevens van het team</div>
-""", unsafe_allow_html=True)
+"""
+st.markdown(_navbar_html.replace("__TEAM_NAME__", TEAM_NAME), unsafe_allow_html=True)
 
 # ---------------------------------------------------------------------------
 # Styling — dark navy background met witte kaarten, zoals in de mockups
 # ---------------------------------------------------------------------------
-_navbar_html = """
+st.markdown("""
 <style>
     .stApp { background-color: #12172c; }
     .block-container { padding-top: 2rem; padding-bottom: 2rem; max-width: 1300px; }
@@ -154,8 +155,7 @@ _navbar_html = """
         .metric-value { font-size: 1.35rem; }
     }
 </style>
-"""
-st.markdown(_navbar_html.replace("__TEAM_NAME__", TEAM_NAME), unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
 # ---------------------------------------------------------------------------
 # Data
