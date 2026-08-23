@@ -4,11 +4,36 @@ import streamlit.components.v1 as components
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
-from data_utils import normalize_players_df   # <-- toevoegen
-
+from data_utils import normalize_players_df, team_players_path
 
 st.set_page_config(page_title="Speler Prestatie Dashboard", layout="wide")
-st.page_link("pages/1_Upload_Data.py", label="Upload nieuwe testdata", icon="📤")
+# ---------------------------------------------------------------------------
+# Coach-login: elke coach heeft een eigen account dat gekoppeld is aan één
+# team. Accounts staan in Streamlit secrets (zie SETUP_TEAMS.md) — dat is
+# de enige plek waar coach-toegang wordt beheerd, coaches kunnen zichzelf
+# niet registreren.
+# ---------------------------------------------------------------------------
+if "coach_authed" not in st.session_state:
+    st.session_state.coach_authed = False
+
+if not st.session_state.coach_authed:
+    st.markdown("## Inloggen")
+    username = st.text_input("Gebruikersnaam")
+    password = st.text_input("Wachtwoord", type="password")
+    if st.button("Inloggen"):
+        coaches = st.secrets.get("coaches", {})
+        coach = coaches.get(username)
+        if coach and password == coach.get("password"):
+            st.session_state.coach_authed = True
+            st.session_state.coach_team_slug = coach["team_slug"]
+            st.session_state.coach_team_name = coach.get("team_name", coach["team_slug"])
+            st.rerun()
+        else:
+            st.error("Onjuiste gebruikersnaam of wachtwoord.")
+    st.stop()
+
+TEAM_SLUG = st.session_state.coach_team_slug
+TEAM_NAME = st.session_state.coach_team_name
 
 
 st.markdown("""
@@ -69,14 +94,14 @@ header {visibility: hidden;}
     <div class="navbar-logo">KICK<svg class="ball-icon" viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="#ffffff" stroke-width="1.4" fill="none"/><path d="M12 6.2l3.2 2.3-1.2 3.8h-4l-1.2-3.8L12 6.2z" fill="#ffffff"/><path d="M12 2.5V6.2M5.3 7.9L2.2 6M18.7 7.9l3.1-1.9M8.8 12.3L4.4 15.7M15.2 12.3l4.4 3.4M9.1 16.3l6-.1.9 3.6M9.1 16.3l-1 3.6" stroke="#ffffff" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="sub">COMPETITION</span></div>
 </div>
 
-<div class="page-title">Baseline Dashboard - 1e Testmoment</div>
+<div class="page-title">__TEAM_NAME__ — 1e Testmoment</div>
 <div class="page-subtitle">Overzicht van alle prestatiegegevens van het team</div>
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------------------------
 # Styling — dark navy background met witte kaarten, zoals in de mockups
 # ---------------------------------------------------------------------------
-st.markdown("""
+_navbar_html = """
 <style>
     .stApp { background-color: #12172c; }
     .block-container { padding-top: 2rem; padding-bottom: 2rem; max-width: 1300px; }
@@ -129,26 +154,27 @@ st.markdown("""
         .metric-value { font-size: 1.35rem; }
     }
 </style>
-""", unsafe_allow_html=True)
+"""
+st.markdown(_navbar_html.replace("__TEAM_NAME__", TEAM_NAME), unsafe_allow_html=True)
 
 # ---------------------------------------------------------------------------
 # Data
 # ---------------------------------------------------------------------------
 @st.cache_data
-def load_data():
-    raw = pd.read_csv("data/players.csv")
+def load_data(team_slug):
+    raw = pd.read_csv(team_players_path(team_slug))
     clean, missing_required, _unused = normalize_players_df(raw)
 
     if missing_required:
         st.error(
-            "Deze verwachte kolommen zijn niet gevonden in players.csv: "
+            "Deze verwachte kolommen zijn niet gevonden in de data van dit team: "
             f"{missing_required}. Gevonden kolommen in het bestand: {raw.columns.tolist()}"
         )
         st.stop()
 
     return clean
 
-df = load_data()
+df = load_data(TEAM_SLUG)
 
 POSITION_COLORS = {
     "Attacker": "#ef4444",
