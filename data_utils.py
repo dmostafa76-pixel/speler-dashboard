@@ -82,6 +82,27 @@ def normalize_players_df(raw: pd.DataFrame):
     return clean, missing_required, unused_columns
 
 
+TEAMS_MANIFEST_PATH = "data/teams/teams.json"
+
+
+def slugify(name: str) -> str:
+    """Zet een teamnaam om in een veilige mapnaam, bv. 'JO17 - Zaterdag 1' -> 'jo17-zaterdag-1'."""
+    chars = [ch.lower() if ch.isalnum() else "-" for ch in str(name).strip()]
+    slug = "".join(chars)
+    while "--" in slug:
+        slug = slug.replace("--", "-")
+    return slug.strip("-") or "team"
+
+
+def team_players_path(team_slug: str) -> str:
+    return f"data/teams/{team_slug}/players.csv"
+
+
+def team_testmoment_path(team_slug: str, base_name: str, kind: str) -> str:
+    # kind is "raw" of "clean"
+    return f"data/teams/{team_slug}/testmomenten/{base_name}_{kind}.csv"
+
+
 def load_players_csv(path_or_buffer):
     """Leest een CSV-bestand (pad of file-achtig object) en normaliseert 'm.
     Gooit een ValueError met duidelijke boodschap als verplichte kolommen
