@@ -396,6 +396,30 @@ HTML_TEMPLATE = """
         background-color: rgba(75, 85, 99, 0.55);
         border-radius: 1px;
         box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5);
+        cursor: pointer;
+    }
+    .stat-bar-avg-marker::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%) translateY(4px);
+        margin-bottom: 6px;
+        background-color: #111827;
+        color: #ffffff;
+        font-size: 0.7rem;
+        font-weight: 600;
+        padding: 0.3rem 0.55rem;
+        border-radius: 6px;
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.15s ease, transform 0.15s ease;
+        z-index: 10;
+    }
+    .stat-bar-avg-marker:hover::after {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
     }
     .note-box {
         background-color: #eff6ff;
@@ -645,7 +669,7 @@ HTML_TEMPLATE = """
                 '<div class="stat-label-row"><span>' + label + '</span><span id="statval-' + id + '"></span></div>' +
                 '<div class="stat-bar-bg">' +
                 '<div class="stat-bar-fill" id="statfill-' + id + '" style="width:0%; background-color:' + color + ';"></div>' +
-                '<div class="stat-bar-avg-marker" style="left:' + avgPct + '%;" title="Team gemiddelde"></div>' +
+                '<div class="stat-bar-avg-marker" style="left:' + avgPct + '%;" data-tooltip="Team gemiddelde: ' + Math.round(avgPct) + '"></div>' +
                 '</div>' +
                 "</div>"
             );
