@@ -211,13 +211,12 @@ def player_scores(row):
 
 all_scores = [player_scores(r) for _, r in df.iterrows()]
 categories = list(all_scores[0].keys())
-team_scores = {cat: float(np.mean([s[cat] for s in all_scores])) for cat in categories}
 
 # =============================================================================
-# SECTIE 1 — SPIDER CHART (CLIENT-SIDE, MET ECHTE SMOOTH TRANSITIE)
+# SECTIE 1 — PRESTATIE-INDEX (CLIENT-SIDE, MET ECHTE SMOOTH TRANSITIE)
 # =============================================================================
-st.markdown('<div class="dash-title">Spider Chart - Algehele Prestatie</div>', unsafe_allow_html=True)
-st.markdown('<div class="dash-subtitle">Vergelijking speler vs. teamgemiddelde</div>', unsafe_allow_html=True)
+st.markdown('<div class="dash-title">Prestatie-Index</div>', unsafe_allow_html=True)
+st.markdown('<div class="dash-subtitle">Index-score per vaardigheid (0-100) — vergelijk desgewenst twee spelers</div>', unsafe_allow_html=True)
 
 STAT_COLORS = {
     "Agility": "#22c55e",
@@ -253,7 +252,6 @@ for _, row in df.iterrows():
 default_name = df["naam"].iloc[0]
 
 PLAYERS_JSON = json.dumps(players_data, ensure_ascii=False)
-TEAM_JSON = json.dumps(team_scores, ensure_ascii=False)
 CATEGORIES_JSON = json.dumps(categories, ensure_ascii=False)
 STAT_COLORS_JSON = json.dumps(STAT_COLORS, ensure_ascii=False)
 STAT_LABELS_JSON = json.dumps(STAT_LABELS, ensure_ascii=False)
@@ -401,13 +399,13 @@ HTML_TEMPLATE = """
 <body>
     <div class="card">
         <div class="top-row">
-            <div style="flex:1; min-width:260px;">
+            <div style="flex:1; min-width:220px;">
                 <span class="sel-label">Selecteer Speler</span>
                 <select id="playerSelect"></select>
             </div>
-            <div class="toggle-wrap">
-                <input type="checkbox" id="teamToggle" checked />
-                <label for="teamToggle">Toon Team Gemiddelde</label>
+            <div style="flex:1; min-width:220px;">
+                <span class="sel-label">Vergelijk met (optioneel)</span>
+                <select id="compareSelect"></select>
             </div>
         </div>
 
@@ -421,8 +419,12 @@ HTML_TEMPLATE = """
                 <div class="card-subtitle" id="playerPos"></div>
                 <div id="statBars"></div>
                 <div class="note-box">
-                    <b>Opmerking</b><br>
-                    De spider chart toont genormaliseerde waarden (0-100) voor een directe vergelijking tussen verschillende metrics.
+                    <b>Wat is de index-score?</b><br>
+                    Elke as loopt van 0 tot 100. Dit is niet de ruwe meetwaarde (seconden, km/h, cm, meters),
+                    maar een index: hoe hoger de score, hoe beter de speler op dat onderdeel scoort binnen de
+                    verwachte bandbreedte voor deze test. Zo zijn onderdelen met heel verschillende eenheden
+                    (bv. agility in seconden versus sprong in cm) direct met elkaar te vergelijken. Kies
+                    hierboven een tweede speler om twee profielen naast elkaar te leggen.
                 </div>
             </div>
         </div>
@@ -430,7 +432,6 @@ HTML_TEMPLATE = """
 
 <script>
     var PLAYERS = __PLAYERS_JSON__;
-    var TEAM = __TEAM_JSON__;
     var CATEGORIES = __CATEGORIES_JSON__;
     var STAT_COLORS = __STAT_COLORS_JSON__;
     var STAT_LABELS = __STAT_LABELS_JSON__;
@@ -439,7 +440,7 @@ HTML_TEMPLATE = """
     var LABEL_OPTIONS = __LABEL_OPTIONS_JSON__;
 
     var selectEl = document.getElementById("playerSelect");
-    var toggleEl = document.getElementById("teamToggle");
+    var compareSelectEl = document.getElementById("compareSelect");
 
     PLAYER_NAMES.forEach(function (name, i) {
         var opt = document.createElement("option");
@@ -447,6 +448,18 @@ HTML_TEMPLATE = """
         opt.textContent = LABEL_OPTIONS[i];
         if (name === DEFAULT_NAME) opt.selected = true;
         selectEl.appendChild(opt);
+    });
+
+    var noCompareOpt = document.createElement("option");
+    noCompareOpt.value = "";
+    noCompareOpt.textContent = "Geen vergelijking";
+    compareSelectEl.appendChild(noCompareOpt);
+
+    PLAYER_NAMES.forEach(function (name, i) {
+        var opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = LABEL_OPTIONS[i];
+        compareSelectEl.appendChild(opt);
     });
 
     function isMobile() {
@@ -524,24 +537,25 @@ HTML_TEMPLATE = """
         requestAnimationFrame(step);
     }
 
-    function buildTraces(name, showTeam) {
+    function buildTraces(name, compareName) {
         var p = PLAYERS[name];
         var scoreArr = CATEGORIES.map(function (c) { return p.scores[c]; });
         scoreArr.push(scoreArr[0]);
         var thetaArr = CATEGORIES.concat([CATEGORIES[0]]);
 
         var traces = [];
-        if (showTeam) {
-            var teamArr = CATEGORIES.map(function (c) { return TEAM[c]; });
-            teamArr.push(teamArr[0]);
+        if (compareName && compareName !== name && PLAYERS[compareName]) {
+            var cp = PLAYERS[compareName];
+            var compareArr = CATEGORIES.map(function (c) { return cp.scores[c]; });
+            compareArr.push(compareArr[0]);
             traces.push({
                 type: "scatterpolar",
-                r: teamArr,
+                r: compareArr,
                 theta: thetaArr,
                 fill: "toself",
-                name: "Team Gemiddelde",
-                line: { color: "#3b82f6" },
-                fillcolor: "rgba(59,130,246,0.15)",
+                name: compareName,
+                line: { color: "#8b5cf6" },
+                fillcolor: "rgba(139,92,246,0.15)",
             });
         }
         traces.push({
@@ -556,10 +570,10 @@ HTML_TEMPLATE = """
         return traces;
     }
 
-    function updateLegend(name, showTeam) {
+    function updateLegend(name, compareName) {
         var html = "";
-        if (showTeam) {
-            html += '<div><span class="dot" style="background:#3b82f6;"></span>Team Gemiddelde</div>';
+        if (compareName && compareName !== name && PLAYERS[compareName]) {
+            html += '<div><span class="dot" style="background:#8b5cf6;"></span>' + compareName + "</div>";
         }
         html += '<div><span class="dot" style="background:#14b8a6;"></span>' + name + "</div>";
         document.getElementById("legendBox").innerHTML = html;
@@ -603,9 +617,8 @@ HTML_TEMPLATE = """
         });
     }
 
-    function renderChart(name) {
-        var showTeam = toggleEl.checked;
-        var traces = buildTraces(name, showTeam);
+    function renderChart(name, compareName) {
+        var traces = buildTraces(name, compareName);
 
         if (!chartInitialized) {
             Plotly.newPlot("spiderChart", traces, baseLayout, { displayModeBar: false, responsive: true });
@@ -613,7 +626,7 @@ HTML_TEMPLATE = """
         } else {
             animateToTraces(traces);
         }
-        updateLegend(name, showTeam);
+        updateLegend(name, compareName);
         updateInfoPanel(name);
 
         if (typeof resizeFrame === "function") {
@@ -622,14 +635,14 @@ HTML_TEMPLATE = """
     }
 
     selectEl.addEventListener("change", function () {
-        renderChart(selectEl.value);
+        renderChart(selectEl.value, compareSelectEl.value);
     });
-    toggleEl.addEventListener("change", function () {
-        renderChart(selectEl.value);
+    compareSelectEl.addEventListener("change", function () {
+        renderChart(selectEl.value, compareSelectEl.value);
     });
 
     initStatBars();
-    renderChart(DEFAULT_NAME);
+    renderChart(DEFAULT_NAME, "");
 
     // --- Iframe-hoogte automatisch laten meebewegen met de inhoud ---
     // Gebruikt Streamlit's officiële resize-protocol (postMessage), zodat niet
@@ -661,7 +674,6 @@ HTML_TEMPLATE = """
 html_out = (
     HTML_TEMPLATE
     .replace("__PLAYERS_JSON__", PLAYERS_JSON)
-    .replace("__TEAM_JSON__", TEAM_JSON)
     .replace("__CATEGORIES_JSON__", CATEGORIES_JSON)
     .replace("__STAT_COLORS_JSON__", STAT_COLORS_JSON)
     .replace("__STAT_LABELS_JSON__", STAT_LABELS_JSON)
