@@ -182,6 +182,12 @@ POSITION_COLORS = {
     "Defender": "#22c55e",
     "Goalkeeper": "#f97316",
 }
+POSITION_LABELS_NL = {
+    "Attacker": "Aanvaller",
+    "Midfielder": "Middenvelder",
+    "Defender": "Verdediger",
+    "Goalkeeper": "Doelman",
+}
 
 # (min, max, invert) -> invert=True betekent: lager is beter
 # De index-score wordt bepaald ten opzichte van de eigen spelersgroep, niet
@@ -812,10 +818,17 @@ with c4:
 sorted_df = df.sort_values("agility_zonder_bal_s")
 colors = [POSITION_COLORS.get(p, "#6b7280") for p in sorted_df["positie"]]
 
+present_positions = [p for p in POSITION_COLORS if p in df["positie"].unique()]
+position_legend = [
+    {"label": POSITION_LABELS_NL.get(p, p), "color": POSITION_COLORS[p]}
+    for p in present_positions
+]
+
 BAR_NAMES_JSON = json.dumps(sorted_df["naam"].tolist(), ensure_ascii=False)
 BAR_VALUES_JSON = json.dumps([float(v) for v in sorted_df["agility_zonder_bal_s"]], ensure_ascii=False)
 BAR_COLORS_JSON = json.dumps(colors, ensure_ascii=False)
 AVG_ZONDER_JSON = json.dumps(float(avg_zonder), ensure_ascii=False)
+POSITION_LEGEND_JSON = json.dumps(position_legend, ensure_ascii=False)
 
 BAR_HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -833,6 +846,8 @@ body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Ar
 .card-subtitle { color: #9ca3af; font-size: 0.8rem; }
 .toggle-wrap { display: flex; align-items: center; gap: 0.5rem; white-space: nowrap; }
 .toggle-wrap label { font-size: 0.9rem; color: #111827; }
+.legend { display: flex; gap: 1.5rem; justify-content: center; font-size: 0.85rem; color: #374151; margin-top: 0.75rem; flex-wrap: wrap; }
+.legend span.dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; }
 @media (max-width: 640px) {
     .card { padding: 1.1rem 1.1rem; }
     .top-row { flex-direction: column; align-items: stretch; }
@@ -848,10 +863,11 @@ body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Ar
         </div>
         <div class="toggle-wrap">
             <input type="checkbox" id="refToggle" checked />
-            <label for="refToggle">Referentielijn</label>
+            <label for="refToggle">Team gemiddelde</label>
         </div>
     </div>
     <div id="barChart" style="width:100%; height:430px;"></div>
+    <div class="legend" id="legendBox"></div>
 </div>
 
 <script>
@@ -859,15 +875,22 @@ var NAMES = __BAR_NAMES_JSON__;
 var VALUES = __BAR_VALUES_JSON__;
 var COLORS = __BAR_COLORS_JSON__;
 var AVG = __AVG_ZONDER_JSON__;
+var POSITION_LEGEND = __POSITION_LEGEND_JSON__;
 
 var refToggle = document.getElementById("refToggle");
+
+var legendHtml = "";
+POSITION_LEGEND.forEach(function (item) {
+    legendHtml += '<div><span class="dot" style="background:' + item.color + ';"></span>' + item.label + "</div>";
+});
+document.getElementById("legendBox").innerHTML = legendHtml;
 
 function easeInOutCubic(t) {
     return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 }
 
 var layout = {
-    xaxis: { title: null, automargin: true },
+    xaxis: { title: "Agility (seconden)", automargin: true },
     yaxis: { title: null, autorange: "reversed", automargin: true },
     height: 430,
     margin: { l: 10, r: 20, t: 10, b: 30 },
@@ -879,6 +902,13 @@ var layout = {
         y0: 0, y1: 1,
         yref: "paper",
         line: { color: "#9ca3af", width: 1.5, dash: "dash" },
+        opacity: 1,
+    }],
+    annotations: [{
+        x: AVG, y: 1, yref: "paper", yanchor: "bottom",
+        text: "Team gem.: " + AVG.toFixed(2) + "s",
+        showarrow: false,
+        font: { size: 11, color: "#6b7280" },
         opacity: 1,
     }],
 };
@@ -903,7 +933,7 @@ function animateLineOpacity(target) {
         var t = Math.min((ts - startTime) / duration, 1);
         var eased = easeInOutCubic(t);
         var val = start + (target - start) * eased;
-        Plotly.relayout("barChart", { "shapes[0].opacity": val });
+        Plotly.relayout("barChart", { "shapes[0].opacity": val, "annotations[0].opacity": val });
         if (t < 1) {
             requestAnimationFrame(step);
         } else {
@@ -943,8 +973,9 @@ bar_html_out = (
     .replace("__BAR_VALUES_JSON__", BAR_VALUES_JSON)
     .replace("__BAR_COLORS_JSON__", BAR_COLORS_JSON)
     .replace("__AVG_ZONDER_JSON__", AVG_ZONDER_JSON)
+    .replace("__POSITION_LEGEND_JSON__", POSITION_LEGEND_JSON)
 )
-components.html(bar_html_out, height=560, scrolling=False)
+components.html(bar_html_out, height=610, scrolling=False)
 
 # =============================================================================
 # SECTIE 3 — SPRINT ANALYSE
