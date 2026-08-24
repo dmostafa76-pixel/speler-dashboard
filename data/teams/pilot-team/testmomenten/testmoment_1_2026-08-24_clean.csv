@@ -1,0 +1,9 @@
+Player ID,naam,acceleratie_kmh,max_snelheid_kmh,sprong_cm,power_watt,afstand_m,VO2Max (ml/kg/min),Benchmark TopEnd Sport (Adults only)*,agility_zonder_bal_s,geslacht,Weight,positie,agility_met_bal_s
+1,Sejad Ibrahim,17.01680672,21.34387352,22.09855781,3070.300729,280,38.752,Poor,18.23,Male,97.9,Defender,18.11
+2,Karrar Al Wazni,18.85913853,23.96449704,22.83700556,2723.610644,840,43.456,Below Average,17.41,Male,87.0,Midfielder,14.68
+3,Yasser Ibrahim,18.8372093,24.86569455,34.05762225,2914.166817,1200,46.48,Average,16.58,Male,73.0,Defender,15.21
+4,Hassan Al Wazni,18.73915558,24.92307692,31.67649,2478.774731,1200,46.48,Average,17.7,Male,65.0,Midfielder,16.99
+5,Montadar Ibrahim,19.23990499,24.56406368,36.0247725,3071.933418,1360,47.824,Average,15.81,Male,74.0,Defender,17.78
+6,Reza Al Khalili,18.45102506,25.59241706,32.52333825,2297.0,1360,47.824,Average,15.1,Male,58.5,Attacker,16.54
+7,Mehdi Al Khalili,19.81651376,25.25331255,33.99269231,2838.147654,2200,54.88,Excellent,14.5,Male,71.0,Midfielder,14.23
+8,Ismail Al Khalili,15.59942224,18.51428571,14.47128281,740.5724061,360,39.424,,19.3,Male,46.3,Attacker,16.72
