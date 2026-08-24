@@ -184,14 +184,24 @@ POSITION_COLORS = {
 }
 
 # (min, max, invert) -> invert=True betekent: lager is beter
-# Deze bereiken zijn gebaseerd op de pilot-testdata (players.csv), met wat
-# marge aan weerszijden. Pas aan zodra je meer/definitieve data hebt.
+# De index-score wordt bepaald ten opzichte van de eigen spelersgroep, niet
+# tegenover een vaste externe norm: min/max hieronder komen uit df zelf, dus
+# de beste speler van dit team scoort 100 en de zwakste 0 op elk onderdeel.
+def _team_relative_bounds(column, invert):
+    lo = float(df[column].min())
+    hi = float(df[column].max())
+    if hi == lo:
+        # Iedereen heeft hier exact dezelfde waarde: geen spreiding, dus
+        # iedereen krijgt een neutrale middenscore i.p.v. delen door nul.
+        hi = lo + 1.0
+    return (lo, hi, invert)
+
 RANGES = {
-    "agility": (13.0, 21.0, True),          # seconden, lager = beter
-    "acceleratie": (14.0, 21.0, False),      # km/h
-    "max_snelheid": (17.0, 27.0, False),     # km/h
-    "sprong": (10.0, 40.0, False),           # cm
-    "uithoudingsvermogen": (250, 2300, False),  # meters
+    "agility": _team_relative_bounds("agility_zonder_bal_s", True),          # seconden, lager = beter
+    "acceleratie": _team_relative_bounds("acceleratie_kmh", False),          # km/h
+    "max_snelheid": _team_relative_bounds("max_snelheid_kmh", False),        # km/h
+    "sprong": _team_relative_bounds("sprong_cm", False),                     # cm
+    "uithoudingsvermogen": _team_relative_bounds("afstand_m", False),        # meters
 }
 
 def normalize(value, lo, hi, invert=False):
@@ -427,11 +437,12 @@ HTML_TEMPLATE = """
                 <div class="note-box">
                     <b>Wat is de index-score?</b><br>
                     Elke as loopt van 0 tot 100. Dit is niet de ruwe meetwaarde (seconden, km/h, cm, meters),
-                    maar een index: hoe hoger de score, hoe beter de speler op dat onderdeel scoort binnen de
-                    verwachte bandbreedte voor deze test. Zo zijn onderdelen met heel verschillende eenheden
-                    (bv. agility in seconden versus sprong in cm) direct met elkaar te vergelijken. Vink
-                    "Toon Team Gemiddelde" aan/uit, en kies eventueel een tweede speler om profielen naast
-                    elkaar te leggen.
+                    maar een index ten opzichte van je <b>eigen spelersgroep</b>: de sterkste speler van dit
+                    team op een onderdeel scoort 100, de zwakste 0 — niet tegenover een vaste externe norm.
+                    Zo zijn onderdelen met heel verschillende eenheden (bv. agility in seconden versus sprong
+                    in cm) direct met elkaar te vergelijken, en zie je meteen waar iemand relatief sterk of
+                    zwak staat binnen deze groep. Vink "Toon Team Gemiddelde" aan/uit, en kies eventueel een
+                    tweede speler om profielen naast elkaar te leggen.
                 </div>
             </div>
         </div>
