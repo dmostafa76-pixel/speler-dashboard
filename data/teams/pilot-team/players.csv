@@ -1,4 +1,4 @@
-Player ID,naam,acceleratie_kmh,max_snelheid_kmh,sprong_cm,power_watt,afstand_m,VO2Max (ml/kg/min),Benchmark TopEnd Sport (Adults only)*,agility_zonder_bal_s,Gender,Weight,positie,agility_met_bal_s
+Player ID,naam,acceleratie_kmh,max_snelheid_kmh,sprong_cm,power_watt,afstand_m,VO2Max (ml/kg/min),Benchmark TopEnd Sport (Adults only)*,agility_zonder_bal_s,geslacht,Weight,positie,agility_met_bal_s
 1,Sejad Ibrahim,17.01680672,21.34387352,22.09855781,3070.300729,280,38.752,Poor,18.23,Male,97.9,Defender,18.11
 2,Karrar Al Wazni,18.85913853,23.96449704,22.83700556,2723.610644,840,43.456,Below Average,17.41,Male,87.0,Midfielder,14.68
 3,Yasser Ibrahim,18.8372093,24.86569455,34.05762225,2914.166817,1200,46.48,Average,16.58,Male,73.0,Defender,15.21
