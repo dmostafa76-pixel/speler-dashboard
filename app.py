@@ -1562,16 +1562,6 @@ STAMINA_VALUES_JSON = json.dumps([float(v) / 1000 for v in stamina_df["afstand_m
 STAMINA_COLORS_JSON = json.dumps(stamina_df["stamina_kleur"].tolist(), ensure_ascii=False)
 AVG_AFSTAND_KM_JSON = json.dumps(avg_afstand_m / 1000, ensure_ascii=False)
 REFERENTIE_KM_JSON = json.dumps(REFERENTIE_M / 1000, ensure_ascii=False)
-STAMINA_BENCHMARK_JSON = json.dumps(
-    [b if b else "" for b in stamina_df["benchmark"]], ensure_ascii=False
-)
-STAMINA_BENCHMARK_COLORS_JSON = json.dumps(
-    [TOPEND_BENCHMARK_COLORS.get(b, "#6b7280") for b in stamina_df["benchmark"]], ensure_ascii=False
-)
-BENCHMARK_LEGEND_JSON = json.dumps(
-    [{"label": lbl, "color": TOPEND_BENCHMARK_COLORS[lbl]} for lbl in TOPEND_BENCHMARK_ORDER],
-    ensure_ascii=False,
-)
 
 STAMINA_HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -1596,7 +1586,6 @@ STAMINA_HTML_TEMPLATE = """
     .tab-btn.active { background: #4f46e5; color: #ffffff; }
     .legend { display: flex; gap: 1.5rem; justify-content: center; font-size: 0.85rem; color: #374151; margin-top: 0.75rem; flex-wrap: wrap; }
     .legend span.dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; }
-    .legend-heading { width: 100%; text-align: center; font-size: 0.78rem; font-weight: 600; color: #6b7280; margin-top: 0.6rem; }
     @media (max-width: 640px) {
         .card { padding: 1.1rem 1.1rem; }
         .top-row { flex-direction: column; align-items: stretch; }
@@ -1621,10 +1610,6 @@ STAMINA_HTML_TEMPLATE = """
             <div><span class="dot" style="background:#f59e0b;"></span>Rond gemiddelde (&plusmn;5%)</div>
             <div><span class="dot" style="background:#22c55e;"></span>Boven gemiddelde (&ge;+5%)</div>
         </div>
-        <div id="benchmarkLegendWrap" style="display:none;">
-            <div class="legend-heading">Label na de balk: Benchmark TopEnd Sport (Yo-Yo IR1, vaste normtabel)</div>
-            <div class="legend" id="benchmarkLegend"></div>
-        </div>
     </div>
 
 <script>
@@ -1633,19 +1618,6 @@ STAMINA_HTML_TEMPLATE = """
     var COLORS = __STAMINA_COLORS_JSON__;
     var AVG_KM = __AVG_AFSTAND_KM_JSON__;
     var REF_KM = __REFERENTIE_KM_JSON__;
-    var BENCHMARK = __STAMINA_BENCHMARK_JSON__;
-    var BENCHMARK_COLORS = __STAMINA_BENCHMARK_COLORS_JSON__;
-    var BENCHMARK_LEGEND = __BENCHMARK_LEGEND_JSON__;
-    var hasBenchmark = BENCHMARK.some(function (b) { return b; });
-
-    if (hasBenchmark) {
-        var benchmarkLegendHtml = "";
-        BENCHMARK_LEGEND.forEach(function (item) {
-            benchmarkLegendHtml += '<div><span class="dot" style="background:' + item.color + ';"></span>' + item.label + "</div>";
-        });
-        document.getElementById("benchmarkLegend").innerHTML = benchmarkLegendHtml;
-        document.getElementById("benchmarkLegendWrap").style.display = "block";
-    }
 
     var refTabRow = document.getElementById("refTabRow");
     var currentX = AVG_KM;
@@ -1659,7 +1631,7 @@ STAMINA_HTML_TEMPLATE = """
         xaxis: { title: null, automargin: true, ticksuffix: " km" },
         yaxis: { title: null, autorange: "reversed", automargin: true },
         height: 480,
-        margin: { l: 10, r: hasBenchmark ? 110 : 20, t: 10, b: 30 },
+        margin: { l: 10, r: 20, t: 10, b: 30 },
         paper_bgcolor: "white",
         plot_bgcolor: "white",
     };
@@ -1686,13 +1658,6 @@ STAMINA_HTML_TEMPLATE = """
         x: VALUES,
         y: NAMES,
         marker: { color: COLORS },
-        text: BENCHMARK,
-        textposition: "outside",
-        cliponaxis: false,
-        textfont: { size: 11, color: BENCHMARK_COLORS },
-        hovertemplate: hasBenchmark
-            ? "%{y}: %{x:.2f} km<br>Benchmark: %{text}<extra></extra>"
-            : "%{y}: %{x:.2f} km<extra></extra>",
     }], Object.assign({}, baseLayout, makeShape(AVG_KM, "Team")), { displayModeBar: false, responsive: true });
 
     function animateLineTo(targetX, label) {
@@ -1763,8 +1728,123 @@ stamina_html_out = (
     .replace("__STAMINA_COLORS_JSON__", STAMINA_COLORS_JSON)
     .replace("__AVG_AFSTAND_KM_JSON__", AVG_AFSTAND_KM_JSON)
     .replace("__REFERENTIE_KM_JSON__", REFERENTIE_KM_JSON)
-    .replace("__STAMINA_BENCHMARK_JSON__", STAMINA_BENCHMARK_JSON)
-    .replace("__STAMINA_BENCHMARK_COLORS_JSON__", STAMINA_BENCHMARK_COLORS_JSON)
-    .replace("__BENCHMARK_LEGEND_JSON__", BENCHMARK_LEGEND_JSON)
 )
-components.html(stamina_html_out, height=680, scrolling=False)
+components.html(stamina_html_out, height=620, scrolling=False)
+
+# =============================================================================
+# Benchmark TopEnd Sport (Adults only) — losse visualisatie
+# =============================================================================
+# Aparte kaart i.p.v. verwerkt in de Stamina-chart hierboven: dit is een
+# classificatie t.o.v. een vaste, geslachtsafhankelijke normtabel (Yo-Yo
+# IR1), een ander soort vergelijking dan "t.o.v. teamgemiddelde" hierboven.
+# Door ze apart te houden blijft elke chart maar één signaal per keer tonen.
+benchmark_df = stamina_df[stamina_df["benchmark"].notna()].copy()
+
+if not benchmark_df.empty:
+    BENCHMARK_RANK = {lbl: i + 1 for i, lbl in enumerate(TOPEND_BENCHMARK_ORDER)}
+    benchmark_df["benchmark_rank"] = benchmark_df["benchmark"].map(BENCHMARK_RANK)
+    benchmark_df = benchmark_df.sort_values("benchmark_rank", ascending=False)
+
+    st.markdown('<div class="dash-title">Benchmark TopEnd Sport (Adults only)</div>', unsafe_allow_html=True)
+    st.markdown('<div class="dash-subtitle">Yo-Yo IR1-classificatie t.o.v. een vaste normtabel (per geslacht) — losstaand van het teamgemiddelde hierboven</div>', unsafe_allow_html=True)
+
+    BENCH_NAMES_JSON = json.dumps(benchmark_df["naam"].tolist(), ensure_ascii=False)
+    BENCH_RANKS_JSON = json.dumps([int(v) for v in benchmark_df["benchmark_rank"]], ensure_ascii=False)
+    BENCH_COLORS_JSON = json.dumps(
+        [TOPEND_BENCHMARK_COLORS[b] for b in benchmark_df["benchmark"]], ensure_ascii=False
+    )
+    BENCH_TEXT_JSON = json.dumps(
+        [f"{b} ({v / 1000:.2f} km)" for b, v in zip(benchmark_df["benchmark"], benchmark_df["afstand_m"])],
+        ensure_ascii=False,
+    )
+    BENCH_ORDER_JSON = json.dumps(TOPEND_BENCHMARK_ORDER, ensure_ascii=False)
+
+    BENCHMARK_HTML_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; background: transparent; }
+    .card { background: #ffffff; border-radius: 14px; padding: 1.5rem 1.75rem; }
+    .card-title { color: #111827; font-size: 1.05rem; font-weight: 700; }
+    .card-subtitle { color: #9ca3af; font-size: 0.8rem; margin-bottom: 1rem; }
+    @media (max-width: 640px) {
+        .card { padding: 1.1rem 1.1rem; }
+    }
+</style>
+</head>
+<body>
+    <div class="card">
+        <div class="card-title">Benchmark TopEnd Sport (Adults only)</div>
+        <div class="card-subtitle">Vaste normtabel per geslacht — niet t.o.v. dit team</div>
+        <div id="benchmarkChart" style="width:100%; height:420px;"></div>
+    </div>
+
+<script>
+    var NAMES = __BENCH_NAMES_JSON__;
+    var RANKS = __BENCH_RANKS_JSON__;
+    var COLORS = __BENCH_COLORS_JSON__;
+    var TEXT = __BENCH_TEXT_JSON__;
+    var ORDER = __BENCH_ORDER_JSON__;
+
+    var layout = {
+        xaxis: {
+            title: null,
+            range: [0.5, ORDER.length + 3.2],
+            tickvals: ORDER.map(function (_, i) { return i + 1; }),
+            ticktext: ORDER,
+            automargin: true,
+        },
+        yaxis: { title: null, autorange: "reversed", automargin: true },
+        height: 420,
+        margin: { l: 10, r: 10, t: 10, b: 30 },
+        paper_bgcolor: "white",
+        plot_bgcolor: "white",
+    };
+
+    Plotly.newPlot("benchmarkChart", [{
+        type: "bar",
+        orientation: "h",
+        x: RANKS,
+        y: NAMES,
+        marker: { color: COLORS },
+        text: TEXT,
+        textposition: "outside",
+        cliponaxis: false,
+        textfont: { size: 11, color: "#374151" },
+        hovertemplate: "%{y}: %{text}<extra></extra>",
+    }], layout, { displayModeBar: false, responsive: true });
+
+    function resizeFrame() {
+        var height = document.body.scrollHeight;
+        window.parent.postMessage({ type: "streamlit:setFrameHeight", height: height }, "*");
+    }
+    setTimeout(resizeFrame, 150);
+    window.addEventListener("load", resizeFrame);
+
+    var resizeTimer = null;
+    window.addEventListener("resize", function () {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function () {
+            Plotly.Plots.resize("benchmarkChart");
+            resizeFrame();
+        }, 150);
+    });
+</script>
+</body>
+</html>
+"""
+
+    benchmark_html_out = (
+        BENCHMARK_HTML_TEMPLATE
+        .replace("__BENCH_NAMES_JSON__", BENCH_NAMES_JSON)
+        .replace("__BENCH_RANKS_JSON__", BENCH_RANKS_JSON)
+        .replace("__BENCH_COLORS_JSON__", BENCH_COLORS_JSON)
+        .replace("__BENCH_TEXT_JSON__", BENCH_TEXT_JSON)
+        .replace("__BENCH_ORDER_JSON__", BENCH_ORDER_JSON)
+    )
+    components.html(benchmark_html_out, height=460, scrolling=False)
