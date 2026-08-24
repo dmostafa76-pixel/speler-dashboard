@@ -446,7 +446,7 @@ HTML_TEMPLATE = """
                 <div id="statBars"></div>
                 <div style="font-size:0.75rem; color:#6b7280; margin-top:-0.4rem; margin-bottom:0.75rem;">
                     <span style="display:inline-block; width:2px; height:10px; background-color:rgba(75,85,99,0.55); vertical-align:middle; margin-right:5px;"></span>
-                    streepje = team gemiddelde
+                    = team gemiddelde
                 </div>
                 <div class="note-box">
                     <b>Indexscore</b><br>
