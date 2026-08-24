@@ -211,12 +211,13 @@ def player_scores(row):
 
 all_scores = [player_scores(r) for _, r in df.iterrows()]
 categories = list(all_scores[0].keys())
+team_scores = {cat: float(np.mean([s[cat] for s in all_scores])) for cat in categories}
 
 # =============================================================================
 # SECTIE 1 — PRESTATIE-INDEX (CLIENT-SIDE, MET ECHTE SMOOTH TRANSITIE)
 # =============================================================================
 st.markdown('<div class="dash-title">Prestatie-Index</div>', unsafe_allow_html=True)
-st.markdown('<div class="dash-subtitle">Index-score per vaardigheid (0-100) — vergelijk desgewenst twee spelers</div>', unsafe_allow_html=True)
+st.markdown('<div class="dash-subtitle">Index-score per vaardigheid (0-100) — vergelijk met het teamgemiddelde en/of een andere speler</div>', unsafe_allow_html=True)
 
 STAT_COLORS = {
     "Agility": "#22c55e",
@@ -252,6 +253,7 @@ for _, row in df.iterrows():
 default_name = df["naam"].iloc[0]
 
 PLAYERS_JSON = json.dumps(players_data, ensure_ascii=False)
+TEAM_JSON = json.dumps(team_scores, ensure_ascii=False)
 CATEGORIES_JSON = json.dumps(categories, ensure_ascii=False)
 STAT_COLORS_JSON = json.dumps(STAT_COLORS, ensure_ascii=False)
 STAT_LABELS_JSON = json.dumps(STAT_LABELS, ensure_ascii=False)
@@ -407,6 +409,10 @@ HTML_TEMPLATE = """
                 <span class="sel-label">Vergelijk met (optioneel)</span>
                 <select id="compareSelect"></select>
             </div>
+            <div class="toggle-wrap">
+                <input type="checkbox" id="teamToggle" checked />
+                <label for="teamToggle">Toon Team Gemiddelde</label>
+            </div>
         </div>
 
         <div class="content-row">
@@ -423,8 +429,9 @@ HTML_TEMPLATE = """
                     Elke as loopt van 0 tot 100. Dit is niet de ruwe meetwaarde (seconden, km/h, cm, meters),
                     maar een index: hoe hoger de score, hoe beter de speler op dat onderdeel scoort binnen de
                     verwachte bandbreedte voor deze test. Zo zijn onderdelen met heel verschillende eenheden
-                    (bv. agility in seconden versus sprong in cm) direct met elkaar te vergelijken. Kies
-                    hierboven een tweede speler om twee profielen naast elkaar te leggen.
+                    (bv. agility in seconden versus sprong in cm) direct met elkaar te vergelijken. Vink
+                    "Toon Team Gemiddelde" aan/uit, en kies eventueel een tweede speler om profielen naast
+                    elkaar te leggen.
                 </div>
             </div>
         </div>
@@ -432,6 +439,7 @@ HTML_TEMPLATE = """
 
 <script>
     var PLAYERS = __PLAYERS_JSON__;
+    var TEAM = __TEAM_JSON__;
     var CATEGORIES = __CATEGORIES_JSON__;
     var STAT_COLORS = __STAT_COLORS_JSON__;
     var STAT_LABELS = __STAT_LABELS_JSON__;
@@ -441,6 +449,7 @@ HTML_TEMPLATE = """
 
     var selectEl = document.getElementById("playerSelect");
     var compareSelectEl = document.getElementById("compareSelect");
+    var toggleEl = document.getElementById("teamToggle");
 
     PLAYER_NAMES.forEach(function (name, i) {
         var opt = document.createElement("option");
@@ -537,13 +546,26 @@ HTML_TEMPLATE = """
         requestAnimationFrame(step);
     }
 
-    function buildTraces(name, compareName) {
+    function buildTraces(name, compareName, showTeam) {
         var p = PLAYERS[name];
         var scoreArr = CATEGORIES.map(function (c) { return p.scores[c]; });
         scoreArr.push(scoreArr[0]);
         var thetaArr = CATEGORIES.concat([CATEGORIES[0]]);
 
         var traces = [];
+        if (showTeam) {
+            var teamArr = CATEGORIES.map(function (c) { return TEAM[c]; });
+            teamArr.push(teamArr[0]);
+            traces.push({
+                type: "scatterpolar",
+                r: teamArr,
+                theta: thetaArr,
+                fill: "toself",
+                name: "Team Gemiddelde",
+                line: { color: "#3b82f6" },
+                fillcolor: "rgba(59,130,246,0.15)",
+            });
+        }
         if (compareName && compareName !== name && PLAYERS[compareName]) {
             var cp = PLAYERS[compareName];
             var compareArr = CATEGORIES.map(function (c) { return cp.scores[c]; });
@@ -570,8 +592,11 @@ HTML_TEMPLATE = """
         return traces;
     }
 
-    function updateLegend(name, compareName) {
+    function updateLegend(name, compareName, showTeam) {
         var html = "";
+        if (showTeam) {
+            html += '<div><span class="dot" style="background:#3b82f6;"></span>Team Gemiddelde</div>';
+        }
         if (compareName && compareName !== name && PLAYERS[compareName]) {
             html += '<div><span class="dot" style="background:#8b5cf6;"></span>' + compareName + "</div>";
         }
@@ -618,7 +643,8 @@ HTML_TEMPLATE = """
     }
 
     function renderChart(name, compareName) {
-        var traces = buildTraces(name, compareName);
+        var showTeam = toggleEl.checked;
+        var traces = buildTraces(name, compareName, showTeam);
 
         if (!chartInitialized) {
             Plotly.newPlot("spiderChart", traces, baseLayout, { displayModeBar: false, responsive: true });
@@ -626,7 +652,7 @@ HTML_TEMPLATE = """
         } else {
             animateToTraces(traces);
         }
-        updateLegend(name, compareName);
+        updateLegend(name, compareName, showTeam);
         updateInfoPanel(name);
 
         if (typeof resizeFrame === "function") {
@@ -638,6 +664,9 @@ HTML_TEMPLATE = """
         renderChart(selectEl.value, compareSelectEl.value);
     });
     compareSelectEl.addEventListener("change", function () {
+        renderChart(selectEl.value, compareSelectEl.value);
+    });
+    toggleEl.addEventListener("change", function () {
         renderChart(selectEl.value, compareSelectEl.value);
     });
 
@@ -674,6 +703,7 @@ HTML_TEMPLATE = """
 html_out = (
     HTML_TEMPLATE
     .replace("__PLAYERS_JSON__", PLAYERS_JSON)
+    .replace("__TEAM_JSON__", TEAM_JSON)
     .replace("__CATEGORIES_JSON__", CATEGORIES_JSON)
     .replace("__STAT_COLORS_JSON__", STAT_COLORS_JSON)
     .replace("__STAT_LABELS_JSON__", STAT_LABELS_JSON)
