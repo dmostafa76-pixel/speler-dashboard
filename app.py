@@ -380,12 +380,21 @@ HTML_TEMPLATE = """
         border-radius: 999px;
         height: 7px;
         width: 100%;
-        overflow: hidden;
+        position: relative;
     }
     .stat-bar-fill {
         border-radius: 999px;
         height: 7px;
         transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .stat-bar-avg-marker {
+        position: absolute;
+        top: -3px;
+        bottom: -3px;
+        width: 2px;
+        margin-left: -1px;
+        background-color: #111827;
+        border-radius: 1px;
     }
     .note-box {
         background-color: #eff6ff;
@@ -434,10 +443,15 @@ HTML_TEMPLATE = """
                 <div class="card-title" id="playerName"></div>
                 <div class="card-subtitle" id="playerPos"></div>
                 <div id="statBars"></div>
+                <div style="font-size:0.75rem; color:#6b7280; margin-top:-0.4rem; margin-bottom:0.75rem;">
+                    <span style="display:inline-block; width:2px; height:10px; background-color:#111827; vertical-align:middle; margin-right:5px;"></span>
+                    zwarte streep = team gemiddelde
+                </div>
                 <div class="note-box">
-                    <b>Index-score (0-100)</b><br>
-                    100 = beste van dit team op dat onderdeel, 0 = zwakste — puur onderling vergeleken,
-                    geen vaste norm.
+                    <b>Indexscore</b><br>
+                    Een score die laat zien hoe een speler presteert ten opzichte van de gekozen
+                    referentiegroep. Referentiegroep = de spelers van dit team: 100 is de beste van de
+                    groep op dat onderdeel, 0 de zwakste.
                 </div>
             </div>
         </div>
@@ -624,10 +638,14 @@ HTML_TEMPLATE = """
             var label = STAT_LABELS[cat];
             var color = STAT_COLORS[cat];
             var id = safeId(cat);
+            var avgPct = TEAM[cat];
             barsHtml += (
                 '<div class="stat-row">' +
                 '<div class="stat-label-row"><span>' + label + '</span><span id="statval-' + id + '"></span></div>' +
-                '<div class="stat-bar-bg"><div class="stat-bar-fill" id="statfill-' + id + '" style="width:0%; background-color:' + color + ';"></div></div>' +
+                '<div class="stat-bar-bg">' +
+                '<div class="stat-bar-fill" id="statfill-' + id + '" style="width:0%; background-color:' + color + ';"></div>' +
+                '<div class="stat-bar-avg-marker" style="left:' + avgPct + '%;" title="Team gemiddelde"></div>' +
+                '</div>' +
                 "</div>"
             );
         });
