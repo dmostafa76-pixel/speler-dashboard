@@ -389,12 +389,13 @@ HTML_TEMPLATE = """
     }
     .stat-bar-avg-marker {
         position: absolute;
-        top: -3px;
-        bottom: -3px;
+        top: -1px;
+        bottom: -1px;
         width: 2px;
         margin-left: -1px;
-        background-color: #111827;
+        background-color: rgba(75, 85, 99, 0.55);
         border-radius: 1px;
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5);
     }
     .note-box {
         background-color: #eff6ff;
@@ -444,8 +445,8 @@ HTML_TEMPLATE = """
                 <div class="card-subtitle" id="playerPos"></div>
                 <div id="statBars"></div>
                 <div style="font-size:0.75rem; color:#6b7280; margin-top:-0.4rem; margin-bottom:0.75rem;">
-                    <span style="display:inline-block; width:2px; height:10px; background-color:#111827; vertical-align:middle; margin-right:5px;"></span>
-                    zwarte streep = team gemiddelde
+                    <span style="display:inline-block; width:2px; height:10px; background-color:rgba(75,85,99,0.55); vertical-align:middle; margin-right:5px;"></span>
+                    streepje = team gemiddelde
                 </div>
                 <div class="note-box">
                     <b>Indexscore</b><br>
