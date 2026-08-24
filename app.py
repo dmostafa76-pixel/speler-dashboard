@@ -893,7 +893,7 @@ var layout = {
     xaxis: { title: "Agility (seconden)", automargin: true },
     yaxis: { title: null, autorange: "reversed", automargin: true },
     height: 430,
-    margin: { l: 10, r: 20, t: 10, b: 30 },
+    margin: { l: 10, r: 20, t: 30, b: 30 },
     paper_bgcolor: "white",
     plot_bgcolor: "white",
     shapes: [{
