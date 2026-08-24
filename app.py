@@ -987,13 +987,8 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# NB: er is geen aparte "Totaal"-kolom in de brondata. "Totaal" hieronder is
-# het gemiddelde van acceleratie_kmh en max_snelheid_kmh. Pas dit aan zodra
-# er een specifieke totaalscore-kolom beschikbaar is.
 avg_accel = float(df["acceleratie_kmh"].mean())
 avg_top = float(df["max_snelheid_kmh"].mean())
-df["totaal_snelheid"] = (df["acceleratie_kmh"] + df["max_snelheid_kmh"]) / 2
-avg_totaal = float(df["totaal_snelheid"].mean())
 
 best_accel_row = df.loc[df["acceleratie_kmh"].idxmax()]
 best_top_row = df.loc[df["max_snelheid_kmh"].idxmax()]
@@ -1016,16 +1011,16 @@ with m2:
 with m3:
     st.markdown(f"""
     <div class="metric-card">
-        <div class="metric-label">&#9889; Explosiefste Speler</div>
+        <div class="metric-label">&#9889; Meest Explosieve Speler</div>
         <div class="metric-value">{best_accel_row['naam']}</div>
-        <div class="metric-sub" style="color:#3b82f6;">{best_accel_row['acceleratie_kmh']:.1f} km/h</div>
+        <div class="metric-sub" style="color:#3b82f6; font-size:1.05rem; font-weight:700;">{best_accel_row['acceleratie_kmh']:.1f} km/h</div>
     </div>""", unsafe_allow_html=True)
 with m4:
     st.markdown(f"""
     <div class="metric-card">
         <div class="metric-label">&#127942; Snelste Speler</div>
         <div class="metric-value">{best_top_row['naam']}</div>
-        <div class="metric-sub green">{best_top_row['max_snelheid_kmh']:.1f} km/h</div>
+        <div class="metric-sub green" style="font-size:1.05rem; font-weight:700;">{best_top_row['max_snelheid_kmh']:.1f} km/h</div>
     </div>""", unsafe_allow_html=True)
 
 col_sprint_scatter, col_sprint_bar = st.columns(2)
@@ -1040,12 +1035,12 @@ with col_sprint_scatter:
         SPRINT_SCATTER_TRACES.append({
             "type": "scatter",
             "mode": "markers",
-            "name": pos,
+            "name": POSITION_LABELS_NL.get(pos, pos),
             "x": sub["acceleratie_kmh"].tolist(),
             "y": sub["max_snelheid_kmh"].tolist(),
             "text": sub["naam"].tolist(),
             "marker": {"color": color, "size": 10},
-            "hovertemplate": "%{text}<extra></extra>",
+            "hovertemplate": "%{text} (%{x:.1f} km/h, %{y:.1f} km/h)<extra></extra>",
         })
 
     SPRINT_SCATTER_JSON = json.dumps(SPRINT_SCATTER_TRACES, ensure_ascii=False)
@@ -1127,7 +1122,6 @@ with col_sprint_bar:
     TAB_DATA = {
         "Acceleratie": build_tab("acceleratie_kmh", avg_accel),
         "Topsnelheid": build_tab("max_snelheid_kmh", avg_top),
-        "Totaal": build_tab("totaal_snelheid", avg_totaal),
     }
     TAB_DATA_JSON = json.dumps(TAB_DATA, ensure_ascii=False)
 
@@ -1154,6 +1148,8 @@ with col_sprint_bar:
         background: #f1f5f9; color: #475569;
     }
     .tab-btn.active { background: #4f46e5; color: #ffffff; }
+    .legend { display: flex; gap: 1.5rem; justify-content: center; font-size: 0.85rem; color: #374151; margin-top: 0.75rem; flex-wrap: wrap; }
+    .legend span.dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; }
     @media (max-width: 640px) {
         .card { padding: 1.1rem 1.1rem; }
         .top-row { flex-direction: column; align-items: stretch; }
@@ -1174,22 +1170,33 @@ with col_sprint_bar:
         </div>
         <div class="tab-row" id="tabRow"></div>
         <div id="sprintBarChart" style="width:100%; height:430px;"></div>
+        <div class="legend" id="legendBox"></div>
     </div>
 
 <script>
     var TAB_DATA = __TAB_DATA_JSON__;
+    var POSITION_LEGEND = __POSITION_LEGEND_JSON__;
     var TAB_TITLES = {
         "Acceleratie": "Acceleratie (0-10m)",
         "Topsnelheid": "Topsnelheid",
-        "Totaal": "Totaal (gemiddelde)",
     };
-    var TAB_KEYS = ["Acceleratie", "Topsnelheid", "Totaal"];
+    var AXIS_LABELS = {
+        "Acceleratie": "Acceleratie (km/h)",
+        "Topsnelheid": "Topsnelheid (km/h)",
+    };
+    var TAB_KEYS = ["Acceleratie", "Topsnelheid"];
     var currentTab = "Acceleratie";
     var currentOpacity = 1;
 
     var refToggle = document.getElementById("refToggle");
     var tabRow = document.getElementById("tabRow");
     var chartTitle = document.getElementById("chartTitle");
+
+    var legendHtml = "";
+    POSITION_LEGEND.forEach(function (item) {
+        legendHtml += '<div><span class="dot" style="background:' + item.color + ';"></span>' + item.label + "</div>";
+    });
+    document.getElementById("legendBox").innerHTML = legendHtml;
 
     TAB_KEYS.forEach(function (key) {
         var btn = document.createElement("button");
@@ -1213,7 +1220,6 @@ with col_sprint_bar:
     }
 
     var baseLayout = {
-        xaxis: { title: null, automargin: true },
         yaxis: { title: null, autorange: "reversed", automargin: true },
         height: 430,
         margin: { l: 10, r: 20, t: 10, b: 30 },
@@ -1231,7 +1237,10 @@ with col_sprint_bar:
             line: { color: "#ef4444", width: 1.5, dash: "dash" },
             opacity: currentOpacity,
         };
-        var layout = Object.assign({}, baseLayout, { shapes: [shape] });
+        var layout = Object.assign({}, baseLayout, {
+            shapes: [shape],
+            xaxis: { title: AXIS_LABELS[currentTab], automargin: true },
+        });
         Plotly.react("sprintBarChart", [{
             type: "bar",
             orientation: "h",
@@ -1287,8 +1296,12 @@ with col_sprint_bar:
 </html>
 """
 
-    sprint_bar_out = SPRINT_BAR_TEMPLATE.replace("__TAB_DATA_JSON__", TAB_DATA_JSON)
-    components.html(sprint_bar_out, height=650, scrolling=False)
+    sprint_bar_out = (
+        SPRINT_BAR_TEMPLATE
+        .replace("__TAB_DATA_JSON__", TAB_DATA_JSON)
+        .replace("__POSITION_LEGEND_JSON__", POSITION_LEGEND_JSON)
+    )
+    components.html(sprint_bar_out, height=690, scrolling=False)
 
 # =============================================================================
 # SECTIE 4 — SPRONG ANALYSE
