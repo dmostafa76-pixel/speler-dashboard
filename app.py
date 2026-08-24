@@ -435,14 +435,9 @@ HTML_TEMPLATE = """
                 <div class="card-subtitle" id="playerPos"></div>
                 <div id="statBars"></div>
                 <div class="note-box">
-                    <b>Wat is de index-score?</b><br>
-                    Elke as loopt van 0 tot 100. Dit is niet de ruwe meetwaarde (seconden, km/h, cm, meters),
-                    maar een index ten opzichte van je <b>eigen spelersgroep</b>: de sterkste speler van dit
-                    team op een onderdeel scoort 100, de zwakste 0 — niet tegenover een vaste externe norm.
-                    Zo zijn onderdelen met heel verschillende eenheden (bv. agility in seconden versus sprong
-                    in cm) direct met elkaar te vergelijken, en zie je meteen waar iemand relatief sterk of
-                    zwak staat binnen deze groep. Vink "Toon Team Gemiddelde" aan/uit, en kies eventueel een
-                    tweede speler om profielen naast elkaar te leggen.
+                    <b>Index-score (0-100)</b><br>
+                    100 = beste van dit team op dat onderdeel, 0 = zwakste — puur onderling vergeleken,
+                    geen vaste norm.
                 </div>
             </div>
         </div>
