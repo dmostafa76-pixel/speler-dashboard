@@ -30,6 +30,7 @@ COLUMN_ALIASES = {
     "agility_met_bal_s": ["Dribbeling Time (sec)", "DribbelingTime (sec)", "Dribbling Time (sec)"],
     "afstand_m": ["Distance (m)"],
     "power_watt": ["Explosive Power (watt)"],
+    "geslacht": ["Gender", "Geslacht", "Sex"],
 }
 
 REQUIRED_FIELDS = [
@@ -101,6 +102,43 @@ def team_players_path(team_slug: str) -> str:
 def team_testmoment_path(team_slug: str, base_name: str, kind: str) -> str:
     # kind is "raw" of "clean"
     return f"data/teams/{team_slug}/testmomenten/{base_name}_{kind}.csv"
+
+
+# "Benchmark TopEnd Sport (Adults only)" classificatie voor de Yo-Yo
+# Intermittent Recovery Test Level 1 (afstand in meter), gebaseerd op de
+# normtabel van topendsports.com. Drempelwaarden zijn geslachtsafhankelijk;
+# zonder bekend geslacht kan er geen classificatie worden bepaald.
+TOPEND_BENCHMARK_ORDER = ["Poor", "Below Average", "Average", "Good", "Excellent", "Elite"]
+TOPEND_BENCHMARK_COLORS = {
+    "Poor": "#dc2626",
+    "Below Average": "#f97316",
+    "Average": "#eab308",
+    "Good": "#84cc16",
+    "Excellent": "#22c55e",
+    "Elite": "#15803d",
+}
+
+_MALE_ALIASES = {"male", "man", "m", "jongen", "boy"}
+_FEMALE_ALIASES = {"female", "vrouw", "v", "f", "meisje", "girl"}
+
+_MALE_THRESHOLDS = [(2400, "Elite"), (2000, "Excellent"), (1520, "Good"), (1040, "Average"), (520, "Below Average")]
+_FEMALE_THRESHOLDS = [(1600, "Elite"), (1320, "Excellent"), (1000, "Good"), (680, "Average"), (320, "Below Average")]
+
+
+def classify_topend_benchmark(afstand_m, geslacht):
+    """Geeft de Benchmark TopEnd Sport-categorie terug voor een Yo-Yo IR1
+    afstand (meter), of None als het geslacht niet herkend wordt."""
+    g = str(geslacht).strip().lower()
+    if g in _MALE_ALIASES:
+        thresholds = _MALE_THRESHOLDS
+    elif g in _FEMALE_ALIASES:
+        thresholds = _FEMALE_THRESHOLDS
+    else:
+        return None
+    for threshold, label in thresholds:
+        if afstand_m > threshold:
+            return label
+    return "Poor"
 
 
 def load_players_csv(path_or_buffer):
