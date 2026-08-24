@@ -4,7 +4,13 @@ import streamlit.components.v1 as components
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
-from data_utils import normalize_players_df, team_players_path
+from data_utils import (
+    normalize_players_df,
+    team_players_path,
+    classify_topend_benchmark,
+    TOPEND_BENCHMARK_ORDER,
+    TOPEND_BENCHMARK_COLORS,
+)
 
 st.set_page_config(page_title="Speler Prestatie Dashboard", layout="wide")
 # ---------------------------------------------------------------------------
@@ -1310,15 +1316,10 @@ st.markdown('<div class="dash-title">Sprong Analyse</div>', unsafe_allow_html=Tr
 st.markdown('<div class="dash-subtitle">Verticale sprong en explosieve kracht</div>', unsafe_allow_html=True)
 st.markdown('<div class="badge-pill">Test: Vertical Jump Test</div>', unsafe_allow_html=True)
 
-# NB: "Norm" hieronder is een aanname (25 cm), afgestemd op de schaal van de
-# huidige pilot-data. Pas dit aan zodra er een officiële norm-waarde bekend is.
-NORM_CM = 25
 avg_sprong = float(df["sprong_cm"].mean())
 best_sprong_row = df.loc[df["sprong_cm"].idxmax()]
-aantal_onder_norm = int((df["sprong_cm"] < NORM_CM).sum())
-pct_onder_norm = float((df["sprong_cm"] < NORM_CM).mean() * 100)
 
-j1, j2, j3 = st.columns(3)
+j1, j2 = st.columns(2)
 with j1:
     st.markdown(f"""
     <div class="metric-card">
@@ -1333,24 +1334,17 @@ with j2:
         <div class="metric-value">{best_sprong_row['naam']}</div>
         <div class="metric-sub green">{best_sprong_row['sprong_cm']:.0f} cm</div>
     </div>""", unsafe_allow_html=True)
-with j3:
-    st.markdown(f"""
-    <div class="metric-card">
-        <div class="metric-label">&#128200; % Spelers Onder Norm</div>
-        <div class="metric-value">{pct_onder_norm:.0f}%</div>
-        <div class="metric-sub">{aantal_onder_norm} van {len(df)} spelers (norm: {NORM_CM}cm)</div>
-    </div>""", unsafe_allow_html=True)
 
 # --- Verticale Sprong per Speler (bar chart, kleur o.b.v. Explosive Power) ---
 if "power_watt" in df.columns:
-    power_tier = pd.qcut(df["power_watt"], q=3, labels=["Lage Power", "Gemiddelde Power", "Hoge Power"])
+    power_tier = pd.qcut(df["power_watt"], q=3, labels=["Lage Explosieve Power", "Gemiddelde Explosieve Power", "Hoge Explosieve Power"])
 else:
-    power_tier = pd.Series(["Gemiddelde Power"] * len(df), index=df.index)
+    power_tier = pd.Series(["Gemiddelde Explosieve Power"] * len(df), index=df.index)
 
 TIER_COLORS = {
-    "Lage Power": "#ef4444",
-    "Gemiddelde Power": "#f59e0b",
-    "Hoge Power": "#22c55e",
+    "Lage Explosieve Power": "#ef4444",
+    "Gemiddelde Explosieve Power": "#f59e0b",
+    "Hoge Explosieve Power": "#22c55e",
 }
 
 jump_df = df.copy()
@@ -1402,9 +1396,9 @@ JUMP_HTML_TEMPLATE = """
         </div>
         <div id="jumpChart" style="width:100%; height:480px;"></div>
         <div class="legend">
-            <div><span class="dot" style="background:#ef4444;"></span>Lage Power</div>
-            <div><span class="dot" style="background:#f59e0b;"></span>Gemiddelde Power</div>
-            <div><span class="dot" style="background:#22c55e;"></span>Hoge Power</div>
+            <div><span class="dot" style="background:#ef4444;"></span>Lage Explosieve Power</div>
+            <div><span class="dot" style="background:#f59e0b;"></span>Gemiddelde Explosieve Power</div>
+            <div><span class="dot" style="background:#22c55e;"></span>Hoge Explosieve Power</div>
         </div>
     </div>
 
@@ -1552,11 +1546,32 @@ stamina_df = df.copy()
 stamina_df["stamina_kleur"] = stamina_df["afstand_m"].apply(lambda v: stamina_kleur(v, avg_afstand_m))
 stamina_df = stamina_df.sort_values("afstand_m", ascending=False)
 
+# Benchmark TopEnd Sport (Adults only) — Yo-Yo IR1 classificatie t.o.v. een
+# vaste, geslachtsafhankelijke normtabel (dus geen teamgemiddelde). Vereist
+# een "geslacht"-kolom in de brondata; ontbreekt die, dan blijft dit leeg
+# en verschijnen er simpelweg geen labels/legenda (geen crash).
+if "geslacht" in stamina_df.columns:
+    stamina_df["benchmark"] = stamina_df.apply(
+        lambda r: classify_topend_benchmark(r["afstand_m"], r["geslacht"]), axis=1
+    )
+else:
+    stamina_df["benchmark"] = None
+
 STAMINA_NAMES_JSON = json.dumps(stamina_df["naam"].tolist(), ensure_ascii=False)
 STAMINA_VALUES_JSON = json.dumps([float(v) / 1000 for v in stamina_df["afstand_m"]], ensure_ascii=False)
 STAMINA_COLORS_JSON = json.dumps(stamina_df["stamina_kleur"].tolist(), ensure_ascii=False)
 AVG_AFSTAND_KM_JSON = json.dumps(avg_afstand_m / 1000, ensure_ascii=False)
 REFERENTIE_KM_JSON = json.dumps(REFERENTIE_M / 1000, ensure_ascii=False)
+STAMINA_BENCHMARK_JSON = json.dumps(
+    [b if b else "" for b in stamina_df["benchmark"]], ensure_ascii=False
+)
+STAMINA_BENCHMARK_COLORS_JSON = json.dumps(
+    [TOPEND_BENCHMARK_COLORS.get(b, "#6b7280") for b in stamina_df["benchmark"]], ensure_ascii=False
+)
+BENCHMARK_LEGEND_JSON = json.dumps(
+    [{"label": lbl, "color": TOPEND_BENCHMARK_COLORS[lbl]} for lbl in TOPEND_BENCHMARK_ORDER],
+    ensure_ascii=False,
+)
 
 STAMINA_HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -1581,6 +1596,7 @@ STAMINA_HTML_TEMPLATE = """
     .tab-btn.active { background: #4f46e5; color: #ffffff; }
     .legend { display: flex; gap: 1.5rem; justify-content: center; font-size: 0.85rem; color: #374151; margin-top: 0.75rem; flex-wrap: wrap; }
     .legend span.dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; }
+    .legend-heading { width: 100%; text-align: center; font-size: 0.78rem; font-weight: 600; color: #6b7280; margin-top: 0.6rem; }
     @media (max-width: 640px) {
         .card { padding: 1.1rem 1.1rem; }
         .top-row { flex-direction: column; align-items: stretch; }
@@ -1605,6 +1621,10 @@ STAMINA_HTML_TEMPLATE = """
             <div><span class="dot" style="background:#f59e0b;"></span>Rond gemiddelde (&plusmn;5%)</div>
             <div><span class="dot" style="background:#22c55e;"></span>Boven gemiddelde (&ge;+5%)</div>
         </div>
+        <div id="benchmarkLegendWrap" style="display:none;">
+            <div class="legend-heading">Label na de balk: Benchmark TopEnd Sport (Yo-Yo IR1, vaste normtabel)</div>
+            <div class="legend" id="benchmarkLegend"></div>
+        </div>
     </div>
 
 <script>
@@ -1613,6 +1633,19 @@ STAMINA_HTML_TEMPLATE = """
     var COLORS = __STAMINA_COLORS_JSON__;
     var AVG_KM = __AVG_AFSTAND_KM_JSON__;
     var REF_KM = __REFERENTIE_KM_JSON__;
+    var BENCHMARK = __STAMINA_BENCHMARK_JSON__;
+    var BENCHMARK_COLORS = __STAMINA_BENCHMARK_COLORS_JSON__;
+    var BENCHMARK_LEGEND = __BENCHMARK_LEGEND_JSON__;
+    var hasBenchmark = BENCHMARK.some(function (b) { return b; });
+
+    if (hasBenchmark) {
+        var benchmarkLegendHtml = "";
+        BENCHMARK_LEGEND.forEach(function (item) {
+            benchmarkLegendHtml += '<div><span class="dot" style="background:' + item.color + ';"></span>' + item.label + "</div>";
+        });
+        document.getElementById("benchmarkLegend").innerHTML = benchmarkLegendHtml;
+        document.getElementById("benchmarkLegendWrap").style.display = "block";
+    }
 
     var refTabRow = document.getElementById("refTabRow");
     var currentX = AVG_KM;
@@ -1626,7 +1659,7 @@ STAMINA_HTML_TEMPLATE = """
         xaxis: { title: null, automargin: true, ticksuffix: " km" },
         yaxis: { title: null, autorange: "reversed", automargin: true },
         height: 480,
-        margin: { l: 10, r: 20, t: 10, b: 30 },
+        margin: { l: 10, r: hasBenchmark ? 110 : 20, t: 10, b: 30 },
         paper_bgcolor: "white",
         plot_bgcolor: "white",
     };
@@ -1653,6 +1686,13 @@ STAMINA_HTML_TEMPLATE = """
         x: VALUES,
         y: NAMES,
         marker: { color: COLORS },
+        text: BENCHMARK,
+        textposition: "outside",
+        cliponaxis: false,
+        textfont: { size: 11, color: BENCHMARK_COLORS },
+        hovertemplate: hasBenchmark
+            ? "%{y}: %{x:.2f} km<br>Benchmark: %{text}<extra></extra>"
+            : "%{y}: %{x:.2f} km<extra></extra>",
     }], Object.assign({}, baseLayout, makeShape(AVG_KM, "Team")), { displayModeBar: false, responsive: true });
 
     function animateLineTo(targetX, label) {
@@ -1723,5 +1763,8 @@ stamina_html_out = (
     .replace("__STAMINA_COLORS_JSON__", STAMINA_COLORS_JSON)
     .replace("__AVG_AFSTAND_KM_JSON__", AVG_AFSTAND_KM_JSON)
     .replace("__REFERENTIE_KM_JSON__", REFERENTIE_KM_JSON)
+    .replace("__STAMINA_BENCHMARK_JSON__", STAMINA_BENCHMARK_JSON)
+    .replace("__STAMINA_BENCHMARK_COLORS_JSON__", STAMINA_BENCHMARK_COLORS_JSON)
+    .replace("__BENCHMARK_LEGEND_JSON__", BENCHMARK_LEGEND_JSON)
 )
-components.html(stamina_html_out, height=620, scrolling=False)
+components.html(stamina_html_out, height=680, scrolling=False)
