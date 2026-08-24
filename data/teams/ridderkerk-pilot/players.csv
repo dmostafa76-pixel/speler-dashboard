@@ -1,0 +1,11 @@
+Player ID,naam,acceleratie_kmh,max_snelheid_kmh,sprong_cm,power_watt,afstand_m,VO2Max (ml/kg/min),Benchmark TopEnd Sport (Adults only)*,agility_zonder_bal_s,geslacht,Weight,positie,agility_met_bal_s
+1,Sami Dubois,19.2003661,25.76676429,16.98212203,719.893559,1640,50.176,Elite,16.64,Female,92.0,Defender,13.1
+2,Ravi Hendriks,15.90117391,26.86754077,25.85013372,992.298735,1120,45.808,Good,16.21,Female,98.1,Goalkeeper,13.01
+3,Kian Nasser,18.96817831,25.19475979,26.07974117,1014.657213,880,43.792,Below Average,17.06,Male,75.4,Midfielder,18.81
+4,Elias Peeters,18.64585604,22.2620932,11.78102595,1699.892797,2200,54.88,Excellent,17.21,Male,73.4,Midfielder,18.41
+5,Daan de Boer,15.54339925,18.35616746,28.80157614,2978.647988,360,39.424,Below Average,18.15,Female,87.9,Goalkeeper,17.72
+6,Lucas Novak,16.84915885,22.11714268,18.38575359,1478.13114,280,38.752,Poor,18.62,Male,56.2,Goalkeeper,19.93
+7,Mateo Visser,16.19742827,24.2785208,23.5618829,2354.298342,1480,48.832,Average,15.43,Male,72.4,Defender,15.02
+8,Bram Idrissi,16.46427885,22.20444875,10.55177544,1545.071469,840,43.456,Average,15.17,Female,60.3,Goalkeeper,18.44
+9,Bram Smit,20.60637081,23.0984418,37.28586873,2711.334164,280,38.752,Poor,18.13,Female,54.6,Goalkeeper,12.51
+10,Finn Novak,20.5767049,26.75966564,39.19667605,776.38717,1320,47.488,Good,13.42,Female,90.6,Attacker,17.66
