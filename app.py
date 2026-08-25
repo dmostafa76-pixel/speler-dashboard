@@ -1234,7 +1234,7 @@ with col_sprint_bar:
             </div>
             <div class="toggle-wrap">
                 <input type="checkbox" id="refToggle" checked />
-                <label for="refToggle">Referentielijn</label>
+                <label for="refToggle">Team gemiddelde</label>
             </div>
         </div>
         <div class="tab-row" id="tabRow"></div>
@@ -1291,7 +1291,7 @@ with col_sprint_bar:
     var baseLayout = {
         yaxis: { title: null, autorange: "reversed", automargin: true },
         height: 430,
-        margin: { l: 10, r: 20, t: 10, b: 30 },
+        margin: { l: 10, r: 20, t: 30, b: 30 },
         paper_bgcolor: "white",
         plot_bgcolor: "white",
         transition: { duration: 500, easing: "cubic-in-out" },
@@ -1306,8 +1306,16 @@ with col_sprint_bar:
             line: { color: "#ef4444", width: 1.5, dash: "dash" },
             opacity: currentOpacity,
         };
+        var annotation = {
+            x: d.avg, y: 1, yref: "paper", yanchor: "bottom",
+            text: "Team gem.: " + d.avg.toFixed(1) + " km/h",
+            showarrow: false,
+            font: { size: 11, color: "#ef4444" },
+            opacity: currentOpacity,
+        };
         var layout = Object.assign({}, baseLayout, {
             shapes: [shape],
+            annotations: [annotation],
             xaxis: { title: AXIS_LABELS[currentTab], automargin: true },
         });
         Plotly.react("sprintBarChart", [{
@@ -1329,7 +1337,7 @@ with col_sprint_bar:
             var t = Math.min((ts - startTime) / duration, 1);
             var eased = easeInOutCubic(t);
             var val = start + (target - start) * eased;
-            Plotly.relayout("sprintBarChart", { "shapes[0].opacity": val });
+            Plotly.relayout("sprintBarChart", { "shapes[0].opacity": val, "annotations[0].opacity": val });
             if (t < 1) {
                 requestAnimationFrame(step);
             } else {
