@@ -38,8 +38,17 @@ def get_active_coach_sessions():
 
 active_sessions = get_active_coach_sessions()
 
+# Het sessie-ID wordt ook in de URL bewaard (?s=...), zodat een refresh van
+# dezelfde tab herkend wordt als dezelfde sessie i.p.v. als een "nieuw
+# apparaat" — anders zou een simpele pagina-herlaad jezelf per ongeluk
+# buitensluiten.
 if "session_token" not in st.session_state:
-    st.session_state.session_token = str(uuid.uuid4())
+    bestaand_token = st.query_params.get("s")
+    if bestaand_token:
+        st.session_state.session_token = bestaand_token
+    else:
+        st.session_state.session_token = str(uuid.uuid4())
+        st.query_params["s"] = st.session_state.session_token
 
 if "coach_authed" not in st.session_state:
     st.session_state.coach_authed = False
