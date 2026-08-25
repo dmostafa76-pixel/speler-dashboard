@@ -226,9 +226,46 @@ def player_scores(row):
         "Uithoud-vermogen": zscore(row["afstand_m"], *TEAM_STATS["uithoudingsvermogen"][:2]),
     }
 
+# De statbalken rechts van de spider chart gebruiken bewust géén z-score:
+# die zou voor een team met weinig spreiding alle balken even (kort) maken.
+# In plaats daarvan een 0-100 index t.o.v. de eigen spelersgroep (beste van
+# het team = 100, zwakste = 0), zodat de balken de volle breedte benutten.
+def _index_bounds(column, invert):
+    lo = float(df[column].min())
+    hi = float(df[column].max())
+    if hi == lo:
+        hi = lo + 1.0
+    return (lo, hi, invert)
+
+INDEX_RANGES = {
+    "agility": _index_bounds("agility_zonder_bal_s", True),
+    "acceleratie": _index_bounds("acceleratie_kmh", False),
+    "max_snelheid": _index_bounds("max_snelheid_kmh", False),
+    "sprong": _index_bounds("sprong_cm", False),
+    "uithoudingsvermogen": _index_bounds("afstand_m", False),
+}
+
+def index_normalize(value, lo, hi, invert=False):
+    pct = (value - lo) / (hi - lo) * 100
+    if invert:
+        pct = 100 - pct
+    return float(np.clip(pct, 0, 100))
+
+def player_index_scores(row):
+    return {
+        "Agility": index_normalize(row["agility_zonder_bal_s"], *INDEX_RANGES["agility"][:2], invert=INDEX_RANGES["agility"][2]),
+        "Acceleratie": index_normalize(row["acceleratie_kmh"], *INDEX_RANGES["acceleratie"][:2]),
+        "Max Snelheid": index_normalize(row["max_snelheid_kmh"], *INDEX_RANGES["max_snelheid"][:2]),
+        "Sprong": index_normalize(row["sprong_cm"], *INDEX_RANGES["sprong"][:2]),
+        "Uithoud-vermogen": index_normalize(row["afstand_m"], *INDEX_RANGES["uithoudingsvermogen"][:2]),
+    }
+
 all_scores = [player_scores(r) for _, r in df.iterrows()]
 categories = list(all_scores[0].keys())
 team_scores = {cat: float(np.mean([s[cat] for s in all_scores])) for cat in categories}
+
+all_index_scores = [player_index_scores(r) for _, r in df.iterrows()]
+team_index_scores = {cat: float(np.mean([s[cat] for s in all_index_scores])) for cat in categories}
 
 # =============================================================================
 # SECTIE 1 — PRESTATIE-INDEX (CLIENT-SIDE, MET ECHTE SMOOTH TRANSITIE)
@@ -255,9 +292,11 @@ players_data = {}
 for _, row in df.iterrows():
     name = row["naam"]
     s = player_scores(row)
+    idx = player_index_scores(row)
     players_data[name] = {
         "positie": row["positie"],
         "scores": s,
+        "index_scores": idx,
         "raw": {
             "Agility": f'{row["agility_zonder_bal_s"]:.1f}s (z {s["Agility"]:+.1f})',
             "Acceleratie": f'{row["acceleratie_kmh"]:.1f} km/h (z {s["Acceleratie"]:+.1f})',
@@ -271,6 +310,7 @@ default_name = df["naam"].iloc[0]
 
 PLAYERS_JSON = json.dumps(players_data, ensure_ascii=False)
 TEAM_JSON = json.dumps(team_scores, ensure_ascii=False)
+TEAM_INDEX_JSON = json.dumps(team_index_scores, ensure_ascii=False)
 CATEGORIES_JSON = json.dumps(categories, ensure_ascii=False)
 STAT_COLORS_JSON = json.dumps(STAT_COLORS, ensure_ascii=False)
 STAT_LABELS_JSON = json.dumps(STAT_LABELS, ensure_ascii=False)
@@ -491,6 +531,7 @@ HTML_TEMPLATE = """
 <script>
     var PLAYERS = __PLAYERS_JSON__;
     var TEAM = __TEAM_JSON__;
+    var TEAM_INDEX = __TEAM_INDEX_JSON__;
     var CATEGORIES = __CATEGORIES_JSON__;
     var STAT_COLORS = __STAT_COLORS_JSON__;
     var STAT_LABELS = __STAT_LABELS_JSON__;
@@ -610,13 +651,6 @@ HTML_TEMPLATE = """
         return Math.max(-2.5, Math.min(2.5, z));
     }
 
-    // Zet een z-score om naar een breedte-percentage (0-100%) voor de
-    // statbalken: -2.5 of lager = 0%, 0 = 50% (het gemiddelde, midden van
-    // de balk), +2.5 of hoger = 100%.
-    function zToPercent(z) {
-        return ((clampZ(z) + 2.5) / 5 * 100).toFixed(1);
-    }
-
     function buildTraces(name, compareName, showTeam) {
         var p = PLAYERS[name];
         var scoreArr = CATEGORIES.map(function (c) { return clampZ(p.scores[c]); });
@@ -689,13 +723,13 @@ HTML_TEMPLATE = """
             var label = STAT_LABELS[cat];
             var color = STAT_COLORS[cat];
             var id = safeId(cat);
-            var avgPct = zToPercent(TEAM[cat]);
+            var avgPct = TEAM_INDEX[cat];
             barsHtml += (
                 '<div class="stat-row">' +
                 '<div class="stat-label-row"><span>' + label + '</span><span id="statval-' + id + '"></span></div>' +
                 '<div class="stat-bar-bg">' +
                 '<div class="stat-bar-fill" id="statfill-' + id + '" style="width:0%; background-color:' + color + ';"></div>' +
-                '<div class="stat-bar-avg-marker" style="left:' + avgPct + '%;" data-tooltip="Team gemiddelde (z = 0)"></div>' +
+                '<div class="stat-bar-avg-marker" style="left:' + avgPct + '%;" data-tooltip="Team gemiddelde: ' + Math.round(avgPct) + '"></div>' +
                 '</div>' +
                 "</div>"
             );
@@ -713,7 +747,7 @@ HTML_TEMPLATE = """
             var valEl = document.getElementById("statval-" + id);
             var fillEl = document.getElementById("statfill-" + id);
             if (valEl) valEl.textContent = p.raw[cat];
-            if (fillEl) fillEl.style.width = zToPercent(p.scores[cat]) + "%";
+            if (fillEl) fillEl.style.width = p.index_scores[cat] + "%";
         });
     }
 
@@ -779,6 +813,7 @@ html_out = (
     HTML_TEMPLATE
     .replace("__PLAYERS_JSON__", PLAYERS_JSON)
     .replace("__TEAM_JSON__", TEAM_JSON)
+    .replace("__TEAM_INDEX_JSON__", TEAM_INDEX_JSON)
     .replace("__CATEGORIES_JSON__", CATEGORIES_JSON)
     .replace("__STAT_COLORS_JSON__", STAT_COLORS_JSON)
     .replace("__STAT_LABELS_JSON__", STAT_LABELS_JSON)
