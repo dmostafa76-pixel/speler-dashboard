@@ -267,6 +267,17 @@ team_scores = {cat: float(np.mean([s[cat] for s in all_scores])) for cat in cate
 all_index_scores = [player_index_scores(r) for _, r in df.iterrows()]
 team_index_scores = {cat: float(np.mean([s[cat] for s in all_index_scores])) for cat in categories}
 
+# Tekst voor de "Team gemiddelde"-tooltip op de statbalken: de echte,
+# ongeschaalde gemiddelde meetwaarde in de eigen eenheid — geen index- of
+# z-score-getal.
+team_avg_text = {
+    "Agility": f'{TEAM_STATS["agility"][0]:.1f}s',
+    "Acceleratie": f'{TEAM_STATS["acceleratie"][0]:.1f} km/h',
+    "Max Snelheid": f'{TEAM_STATS["max_snelheid"][0]:.1f} km/h',
+    "Sprong": f'{TEAM_STATS["sprong"][0]:.0f} cm',
+    "Uithoud-vermogen": f'{TEAM_STATS["uithoudingsvermogen"][0]:.0f} m',
+}
+
 # =============================================================================
 # SECTIE 1 — PRESTATIE-INDEX (CLIENT-SIDE, MET ECHTE SMOOTH TRANSITIE)
 # =============================================================================
@@ -298,11 +309,11 @@ for _, row in df.iterrows():
         "scores": s,
         "index_scores": idx,
         "raw": {
-            "Agility": f'{row["agility_zonder_bal_s"]:.1f}s (z {s["Agility"]:+.1f})',
-            "Acceleratie": f'{row["acceleratie_kmh"]:.1f} km/h (z {s["Acceleratie"]:+.1f})',
-            "Max Snelheid": f'{row["max_snelheid_kmh"]:.1f} km/h (z {s["Max Snelheid"]:+.1f})',
-            "Sprong": f'{row["sprong_cm"]:.0f} cm (z {s["Sprong"]:+.1f})',
-            "Uithoud-vermogen": f'{row["afstand_m"]:.0f} m (z {s["Uithoud-vermogen"]:+.1f})',
+            "Agility": f'{row["agility_zonder_bal_s"]:.1f}s',
+            "Acceleratie": f'{row["acceleratie_kmh"]:.1f} km/h',
+            "Max Snelheid": f'{row["max_snelheid_kmh"]:.1f} km/h',
+            "Sprong": f'{row["sprong_cm"]:.0f} cm',
+            "Uithoud-vermogen": f'{row["afstand_m"]:.0f} m',
         },
     }
 
@@ -311,6 +322,7 @@ default_name = df["naam"].iloc[0]
 PLAYERS_JSON = json.dumps(players_data, ensure_ascii=False)
 TEAM_JSON = json.dumps(team_scores, ensure_ascii=False)
 TEAM_INDEX_JSON = json.dumps(team_index_scores, ensure_ascii=False)
+TEAM_AVG_TEXT_JSON = json.dumps(team_avg_text, ensure_ascii=False)
 CATEGORIES_JSON = json.dumps(categories, ensure_ascii=False)
 STAT_COLORS_JSON = json.dumps(STAT_COLORS, ensure_ascii=False)
 STAT_LABELS_JSON = json.dumps(STAT_LABELS, ensure_ascii=False)
@@ -532,6 +544,7 @@ HTML_TEMPLATE = """
     var PLAYERS = __PLAYERS_JSON__;
     var TEAM = __TEAM_JSON__;
     var TEAM_INDEX = __TEAM_INDEX_JSON__;
+    var TEAM_AVG_TEXT = __TEAM_AVG_TEXT_JSON__;
     var CATEGORIES = __CATEGORIES_JSON__;
     var STAT_COLORS = __STAT_COLORS_JSON__;
     var STAT_LABELS = __STAT_LABELS_JSON__;
@@ -729,7 +742,7 @@ HTML_TEMPLATE = """
                 '<div class="stat-label-row"><span>' + label + '</span><span id="statval-' + id + '"></span></div>' +
                 '<div class="stat-bar-bg">' +
                 '<div class="stat-bar-fill" id="statfill-' + id + '" style="width:0%; background-color:' + color + ';"></div>' +
-                '<div class="stat-bar-avg-marker" style="left:' + avgPct + '%;" data-tooltip="Team gemiddelde: ' + Math.round(avgPct) + '"></div>' +
+                '<div class="stat-bar-avg-marker" style="left:' + avgPct + '%;" data-tooltip="Team gemiddelde: ' + TEAM_AVG_TEXT[cat] + '"></div>' +
                 '</div>' +
                 "</div>"
             );
@@ -814,6 +827,7 @@ html_out = (
     .replace("__PLAYERS_JSON__", PLAYERS_JSON)
     .replace("__TEAM_JSON__", TEAM_JSON)
     .replace("__TEAM_INDEX_JSON__", TEAM_INDEX_JSON)
+    .replace("__TEAM_AVG_TEXT_JSON__", TEAM_AVG_TEXT_JSON)
     .replace("__CATEGORIES_JSON__", CATEGORIES_JSON)
     .replace("__STAT_COLORS_JSON__", STAT_COLORS_JSON)
     .replace("__STAT_LABELS_JSON__", STAT_LABELS_JSON)
