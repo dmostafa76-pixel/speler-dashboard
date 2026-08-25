@@ -1881,103 +1881,40 @@ if not benchmark_df.empty:
     st.markdown('<div class="dash-title">Benchmark TopEnd Sport (Adults only)</div>', unsafe_allow_html=True)
     st.markdown('<div class="dash-subtitle">Yo-Yo IR1-classificatie t.o.v. een vaste normtabel (per geslacht) — losstaand van het teamgemiddelde hierboven</div>', unsafe_allow_html=True)
 
-    BENCH_NAMES_JSON = json.dumps(benchmark_df["naam"].tolist(), ensure_ascii=False)
-    BENCH_RANKS_JSON = json.dumps([int(v) for v in benchmark_df["benchmark_rank"]], ensure_ascii=False)
-    BENCH_COLORS_JSON = json.dumps(
-        [TOPEND_BENCHMARK_COLORS[b] for b in benchmark_df["benchmark"]], ensure_ascii=False
-    )
-    BENCH_TEXT_JSON = json.dumps(
-        [f"{b} ({v / 1000:.2f} km)" for b, v in zip(benchmark_df["benchmark"], benchmark_df["afstand_m"])],
-        ensure_ascii=False,
-    )
-    BENCH_ORDER_JSON = json.dumps(TOPEND_BENCHMARK_ORDER, ensure_ascii=False)
+    badge_rows_html = ""
+    for _, r in benchmark_df.iterrows():
+        color = TOPEND_BENCHMARK_COLORS[r["benchmark"]]
+        km_text = f'{r["afstand_m"] / 1000:.2f} km'
+        badge_rows_html += f"""
+        <div class="benchmark-row">
+            <div class="benchmark-name">{r['naam']}</div>
+            <div class="benchmark-right">
+                <span class="benchmark-km">{km_text}</span>
+                <span class="benchmark-badge" style="background-color:{color};">{r['benchmark']}</span>
+            </div>
+        </div>"""
 
-    BENCHMARK_HTML_TEMPLATE = """
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    st.markdown(f"""
 <style>
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; background: transparent; }
-    .card { background: #ffffff; border-radius: 14px; padding: 1.5rem 1.75rem; }
-    .card-title { color: #111827; font-size: 1.05rem; font-weight: 700; }
-    .card-subtitle { color: #9ca3af; font-size: 0.8rem; margin-bottom: 1rem; }
-    @media (max-width: 640px) {
-        .card { padding: 1.1rem 1.1rem; }
-    }
+    .benchmark-card {{ background-color: #ffffff; border-radius: 14px; padding: 1.5rem 1.75rem; margin-bottom: 1.5rem; }}
+    .benchmark-row {{
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 0.65rem 0; border-bottom: 1px solid #f1f5f9;
+    }}
+    .benchmark-row:last-child {{ border-bottom: none; }}
+    .benchmark-name {{ font-size: 0.95rem; font-weight: 600; color: #111827; }}
+    .benchmark-right {{ display: flex; align-items: center; gap: 0.75rem; }}
+    .benchmark-km {{ font-size: 0.82rem; color: #9ca3af; }}
+    .benchmark-badge {{
+        display: inline-block; color: #ffffff; font-size: 0.78rem; font-weight: 700;
+        padding: 0.3rem 0.8rem; border-radius: 999px; min-width: 110px; text-align: center;
+    }}
+    @media (max-width: 640px) {{
+        .benchmark-card {{ padding: 1.1rem 1.2rem; }}
+        .benchmark-badge {{ min-width: 90px; font-size: 0.72rem; }}
+        .benchmark-km {{ display: none; }}
+    }}
 </style>
-</head>
-<body>
-    <div class="card">
-        <div class="card-title">Benchmark TopEnd Sport (Adults only)</div>
-        <div class="card-subtitle">Vaste normtabel per geslacht — niet t.o.v. dit team</div>
-        <div id="benchmarkChart" style="width:100%; height:420px;"></div>
-    </div>
-
-<script>
-    var NAMES = __BENCH_NAMES_JSON__;
-    var RANKS = __BENCH_RANKS_JSON__;
-    var COLORS = __BENCH_COLORS_JSON__;
-    var TEXT = __BENCH_TEXT_JSON__;
-    var ORDER = __BENCH_ORDER_JSON__;
-
-    var layout = {
-        xaxis: {
-            title: null,
-            range: [0.5, ORDER.length + 3.2],
-            tickvals: ORDER.map(function (_, i) { return i + 1; }),
-            ticktext: ORDER,
-            automargin: true,
-        },
-        yaxis: { title: null, autorange: "reversed", automargin: true },
-        height: 420,
-        margin: { l: 10, r: 10, t: 10, b: 30 },
-        paper_bgcolor: "white",
-        plot_bgcolor: "white",
-    };
-
-    Plotly.newPlot("benchmarkChart", [{
-        type: "bar",
-        orientation: "h",
-        x: RANKS,
-        y: NAMES,
-        marker: { color: COLORS },
-        text: TEXT,
-        textposition: "outside",
-        cliponaxis: false,
-        textfont: { size: 11, color: "#374151" },
-        hovertemplate: "%{y}: %{text}<extra></extra>",
-    }], layout, { displayModeBar: false, responsive: true });
-
-    function resizeFrame() {
-        var height = document.body.scrollHeight;
-        window.parent.postMessage({ type: "streamlit:setFrameHeight", height: height }, "*");
-    }
-    setTimeout(resizeFrame, 150);
-    window.addEventListener("load", resizeFrame);
-
-    var resizeTimer = null;
-    window.addEventListener("resize", function () {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(function () {
-            Plotly.Plots.resize("benchmarkChart");
-            resizeFrame();
-        }, 150);
-    });
-</script>
-</body>
-</html>
-"""
-
-    benchmark_html_out = (
-        BENCHMARK_HTML_TEMPLATE
-        .replace("__BENCH_NAMES_JSON__", BENCH_NAMES_JSON)
-        .replace("__BENCH_RANKS_JSON__", BENCH_RANKS_JSON)
-        .replace("__BENCH_COLORS_JSON__", BENCH_COLORS_JSON)
-        .replace("__BENCH_TEXT_JSON__", BENCH_TEXT_JSON)
-        .replace("__BENCH_ORDER_JSON__", BENCH_ORDER_JSON)
-    )
-    components.html(benchmark_html_out, height=460, scrolling=False)
+<div class="benchmark-card">{badge_rows_html}
+</div>
+""", unsafe_allow_html=True)
