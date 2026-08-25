@@ -195,40 +195,35 @@ POSITION_LABELS_NL = {
     "Goalkeeper": "Doelman",
 }
 
-# (min, max, invert) -> invert=True betekent: lager is beter
-# De index-score wordt bepaald ten opzichte van de eigen spelersgroep, niet
-# tegenover een vaste externe norm: min/max hieronder komen uit df zelf, dus
-# de beste speler van dit team scoort 100 en de zwakste 0 op elk onderdeel.
-def _team_relative_bounds(column, invert):
-    lo = float(df[column].min())
-    hi = float(df[column].max())
-    if hi == lo:
-        # Iedereen heeft hier exact dezelfde waarde: geen spreiding, dus
-        # iedereen krijgt een neutrale middenscore i.p.v. delen door nul.
-        hi = lo + 1.0
-    return (lo, hi, invert)
+# invert=True betekent: lager is beter (bv. agility-tijd), dus het teken van
+# de z-score wordt omgedraaid zodat "verder naar buiten" altijd "beter"
+# betekent, ongeacht het onderdeel.
+def _team_mean_std(column, invert):
+    mean = float(df[column].mean())
+    std = float(df[column].std(ddof=0))
+    return (mean, std, invert)
 
-RANGES = {
-    "agility": _team_relative_bounds("agility_zonder_bal_s", True),          # seconden, lager = beter
-    "acceleratie": _team_relative_bounds("acceleratie_kmh", False),          # km/h
-    "max_snelheid": _team_relative_bounds("max_snelheid_kmh", False),        # km/h
-    "sprong": _team_relative_bounds("sprong_cm", False),                     # cm
-    "uithoudingsvermogen": _team_relative_bounds("afstand_m", False),        # meters
+TEAM_STATS = {
+    "agility": _team_mean_std("agility_zonder_bal_s", True),          # seconden, lager = beter
+    "acceleratie": _team_mean_std("acceleratie_kmh", False),          # km/h
+    "max_snelheid": _team_mean_std("max_snelheid_kmh", False),        # km/h
+    "sprong": _team_mean_std("sprong_cm", False),                     # cm
+    "uithoudingsvermogen": _team_mean_std("afstand_m", False),        # meters
 }
 
-def normalize(value, lo, hi, invert=False):
-    pct = (value - lo) / (hi - lo) * 100
+def zscore(value, mean, std, invert=False):
+    z = 0.0 if std == 0 else (value - mean) / std
     if invert:
-        pct = 100 - pct
-    return float(np.clip(pct, 0, 100))
+        z = -z
+    return float(z)
 
 def player_scores(row):
     return {
-        "Agility": normalize(row["agility_zonder_bal_s"], *RANGES["agility"][:2], invert=RANGES["agility"][2]),
-        "Acceleratie": normalize(row["acceleratie_kmh"], *RANGES["acceleratie"][:2]),
-        "Max Snelheid": normalize(row["max_snelheid_kmh"], *RANGES["max_snelheid"][:2]),
-        "Sprong": normalize(row["sprong_cm"], *RANGES["sprong"][:2]),
-        "Uithoud-vermogen": normalize(row["afstand_m"], *RANGES["uithoudingsvermogen"][:2]),
+        "Agility": zscore(row["agility_zonder_bal_s"], *TEAM_STATS["agility"][:2], invert=TEAM_STATS["agility"][2]),
+        "Acceleratie": zscore(row["acceleratie_kmh"], *TEAM_STATS["acceleratie"][:2]),
+        "Max Snelheid": zscore(row["max_snelheid_kmh"], *TEAM_STATS["max_snelheid"][:2]),
+        "Sprong": zscore(row["sprong_cm"], *TEAM_STATS["sprong"][:2]),
+        "Uithoud-vermogen": zscore(row["afstand_m"], *TEAM_STATS["uithoudingsvermogen"][:2]),
     }
 
 all_scores = [player_scores(r) for _, r in df.iterrows()]
@@ -238,8 +233,8 @@ team_scores = {cat: float(np.mean([s[cat] for s in all_scores])) for cat in cate
 # =============================================================================
 # SECTIE 1 — PRESTATIE-INDEX (CLIENT-SIDE, MET ECHTE SMOOTH TRANSITIE)
 # =============================================================================
-st.markdown('<div class="dash-title">Prestatie-Index</div>', unsafe_allow_html=True)
-st.markdown('<div class="dash-subtitle">Index-score per vaardigheid (0-100) — vergelijk met het teamgemiddelde en/of een andere speler</div>', unsafe_allow_html=True)
+st.markdown('<div class="dash-title">Prestatie Z-Score</div>', unsafe_allow_html=True)
+st.markdown('<div class="dash-subtitle">Afwijking t.o.v. het teamgemiddelde, in standaarddeviaties — vergelijk met het teamgemiddelde en/of een andere speler</div>', unsafe_allow_html=True)
 
 STAT_COLORS = {
     "Agility": "#22c55e",
@@ -264,11 +259,11 @@ for _, row in df.iterrows():
         "positie": row["positie"],
         "scores": s,
         "raw": {
-            "Agility": f'{row["agility_zonder_bal_s"]:.1f}s',
-            "Acceleratie": f'{row["acceleratie_kmh"]:.1f} km/h',
-            "Max Snelheid": f'{row["max_snelheid_kmh"]:.1f} km/h',
-            "Sprong": f'{row["sprong_cm"]:.0f} cm',
-            "Uithoud-vermogen": f'{row["afstand_m"]:.0f} m',
+            "Agility": f'{row["agility_zonder_bal_s"]:.1f}s (z {s["Agility"]:+.1f})',
+            "Acceleratie": f'{row["acceleratie_kmh"]:.1f} km/h (z {s["Acceleratie"]:+.1f})',
+            "Max Snelheid": f'{row["max_snelheid_kmh"]:.1f} km/h (z {s["Max Snelheid"]:+.1f})',
+            "Sprong": f'{row["sprong_cm"]:.0f} cm (z {s["Sprong"]:+.1f})',
+            "Uithoud-vermogen": f'{row["afstand_m"]:.0f} m (z {s["Uithoud-vermogen"]:+.1f})',
         },
     }
 
@@ -485,10 +480,9 @@ HTML_TEMPLATE = """
                     = team gemiddelde
                 </div>
                 <div class="note-box">
-                    <b>Indexscore</b><br>
-                    Een score die laat zien hoe een speler presteert ten opzichte van de gekozen
-                    referentiegroep. Referentiegroep = de spelers van dit team: 100 is de beste van de
-                    groep op dat onderdeel, 0 de zwakste.
+                    <b>Z-score</b><br>
+                    Hoeveel standaarddeviaties een speler van het teamgemiddelde afwijkt.
+                    0 = gemiddeld, +2 = sterk boven, &minus;2 = sterk onder het gemiddelde van dit team.
                 </div>
             </div>
         </div>
@@ -536,7 +530,12 @@ HTML_TEMPLATE = """
         var mobile = isMobile();
         return {
             polar: {
-                radialaxis: { visible: true, range: [0, 100], gridcolor: "#e5e7eb" },
+                radialaxis: {
+                    visible: true,
+                    range: [-2.5, 2.5],
+                    tickvals: [-2, -1, 0, 1, 2],
+                    gridcolor: "#e5e7eb",
+                },
             },
             showlegend: false,
             margin: mobile
@@ -603,15 +602,30 @@ HTML_TEMPLATE = """
         requestAnimationFrame(step);
     }
 
+    // Plotly's radiale as loopt van -2.5 tot +2.5; extreme uitschieters
+    // (bv. bij een heel kleine spreiding) worden hierop afgeklemd zodat de
+    // chart bruikbaar blijft. De echte, ongeklemde z-score blijft gewoon
+    // zichtbaar in het infopaneel rechts.
+    function clampZ(z) {
+        return Math.max(-2.5, Math.min(2.5, z));
+    }
+
+    // Zet een z-score om naar een breedte-percentage (0-100%) voor de
+    // statbalken: -2.5 of lager = 0%, 0 = 50% (het gemiddelde, midden van
+    // de balk), +2.5 of hoger = 100%.
+    function zToPercent(z) {
+        return ((clampZ(z) + 2.5) / 5 * 100).toFixed(1);
+    }
+
     function buildTraces(name, compareName, showTeam) {
         var p = PLAYERS[name];
-        var scoreArr = CATEGORIES.map(function (c) { return p.scores[c]; });
+        var scoreArr = CATEGORIES.map(function (c) { return clampZ(p.scores[c]); });
         scoreArr.push(scoreArr[0]);
         var thetaArr = CATEGORIES.concat([CATEGORIES[0]]);
 
         var traces = [];
         if (showTeam) {
-            var teamArr = CATEGORIES.map(function (c) { return TEAM[c]; });
+            var teamArr = CATEGORIES.map(function (c) { return clampZ(TEAM[c]); });
             teamArr.push(teamArr[0]);
             traces.push({
                 type: "scatterpolar",
@@ -625,7 +639,7 @@ HTML_TEMPLATE = """
         }
         if (compareName && compareName !== name && PLAYERS[compareName]) {
             var cp = PLAYERS[compareName];
-            var compareArr = CATEGORIES.map(function (c) { return cp.scores[c]; });
+            var compareArr = CATEGORIES.map(function (c) { return clampZ(cp.scores[c]); });
             compareArr.push(compareArr[0]);
             traces.push({
                 type: "scatterpolar",
@@ -675,13 +689,13 @@ HTML_TEMPLATE = """
             var label = STAT_LABELS[cat];
             var color = STAT_COLORS[cat];
             var id = safeId(cat);
-            var avgPct = TEAM[cat];
+            var avgPct = zToPercent(TEAM[cat]);
             barsHtml += (
                 '<div class="stat-row">' +
                 '<div class="stat-label-row"><span>' + label + '</span><span id="statval-' + id + '"></span></div>' +
                 '<div class="stat-bar-bg">' +
                 '<div class="stat-bar-fill" id="statfill-' + id + '" style="width:0%; background-color:' + color + ';"></div>' +
-                '<div class="stat-bar-avg-marker" style="left:' + avgPct + '%;" data-tooltip="Team gemiddelde: ' + Math.round(avgPct) + '"></div>' +
+                '<div class="stat-bar-avg-marker" style="left:' + avgPct + '%;" data-tooltip="Team gemiddelde (z = 0)"></div>' +
                 '</div>' +
                 "</div>"
             );
@@ -699,7 +713,7 @@ HTML_TEMPLATE = """
             var valEl = document.getElementById("statval-" + id);
             var fillEl = document.getElementById("statfill-" + id);
             if (valEl) valEl.textContent = p.raw[cat];
-            if (fillEl) fillEl.style.width = p.scores[cat] + "%";
+            if (fillEl) fillEl.style.width = zToPercent(p.scores[cat]) + "%";
         });
     }
 
