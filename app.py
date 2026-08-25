@@ -1,4 +1,6 @@
 import json
+import time
+import uuid
 import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
@@ -13,12 +15,32 @@ from data_utils import (
 )
 
 st.set_page_config(page_title="Speler Prestatie Dashboard", layout="wide")
+
 # ---------------------------------------------------------------------------
 # Coach-login: elke coach heeft een eigen account dat gekoppeld is aan één
 # team. Accounts staan in Streamlit secrets (zie SETUP_TEAMS.md) — dat is
 # de enige plek waar coach-toegang wordt beheerd, coaches kunnen zichzelf
 # niet registreren.
+#
+# Eén account = maximaal één actieve sessie tegelijk. Dit wordt bijgehouden
+# in een gedeeld geheugen (st.cache_resource, gedeeld door alle sessies
+# binnen deze draaiende app) i.p.v. st.session_state, dat juist per apparaat
+# apart is. Een sessie die 15 minuten niets doet, wordt automatisch als
+# "verlaten" beschouwd en geeft het account weer vrij.
 # ---------------------------------------------------------------------------
+SESSION_TIMEOUT_SECONDS = 15 * 60
+
+
+@st.cache_resource
+def get_active_coach_sessions():
+    return {}  # gebruikersnaam -> {"token": str, "last_seen": float}
+
+
+active_sessions = get_active_coach_sessions()
+
+if "session_token" not in st.session_state:
+    st.session_state.session_token = str(uuid.uuid4())
+
 if "coach_authed" not in st.session_state:
     st.session_state.coach_authed = False
 
@@ -29,17 +51,48 @@ if not st.session_state.coach_authed:
     if st.button("Inloggen"):
         coaches = st.secrets.get("coaches", {})
         coach = coaches.get(username)
-        if coach and password == coach.get("password"):
-            st.session_state.coach_authed = True
-            st.session_state.coach_team_slug = coach["team_slug"]
-            st.session_state.coach_team_name = coach.get("team_name", coach["team_slug"])
-            st.rerun()
-        else:
+        if not coach or password != coach.get("password"):
             st.error("Onjuiste gebruikersnaam of wachtwoord.")
+        else:
+            now = time.time()
+            existing = active_sessions.get(username)
+            elders_actief = (
+                existing is not None
+                and existing["token"] != st.session_state.session_token
+                and (now - existing["last_seen"]) < SESSION_TIMEOUT_SECONDS
+            )
+            if elders_actief:
+                st.error(
+                    "Dit account is al actief ingelogd op een ander apparaat. "
+                    "Log daar eerst uit, of probeer het over een paar minuten opnieuw."
+                )
+            else:
+                active_sessions[username] = {"token": st.session_state.session_token, "last_seen": now}
+                st.session_state.coach_authed = True
+                st.session_state.coach_username = username
+                st.session_state.coach_team_slug = coach["team_slug"]
+                st.session_state.coach_team_name = coach.get("team_name", coach["team_slug"])
+                st.rerun()
     st.stop()
+
+# Iemand anders kan intussen (na een timeout) met hetzelfde account zijn
+# ingelogd — in dat geval verliest deze sessie de vergrendeling en moet
+# opnieuw worden ingelogd i.p.v. door te blijven werken.
+_username = st.session_state.coach_username
+_current = active_sessions.get(_username)
+if _current is None or _current["token"] != st.session_state.session_token:
+    st.session_state.coach_authed = False
+    st.warning("Je bent uitgelogd omdat dit account op een ander apparaat actief is geworden.")
+    st.stop()
+active_sessions[_username]["last_seen"] = time.time()
 
 TEAM_SLUG = st.session_state.coach_team_slug
 TEAM_NAME = st.session_state.coach_team_name
+
+if st.button("Uitloggen", key="logout_button"):
+    active_sessions.pop(_username, None)
+    st.session_state.coach_authed = False
+    st.rerun()
 
 
 _navbar_html = """
