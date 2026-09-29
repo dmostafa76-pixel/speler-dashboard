@@ -292,12 +292,18 @@ def player_scores(row):
 # die zou voor een team met weinig spreiding alle balken even (kort) maken.
 # In plaats daarvan een 0-100 index t.o.v. de eigen spelersgroep (beste van
 # het team = 100, zwakste = 0), zodat de balken de volle breedte benutten.
+#
+# Zonder marge staat de zwakste speler van het team altijd op exact 0% —
+# zijn balk is dan onzichtbaar, ongeacht hoe zwak hij precies is. Door de
+# boven- en ondergrens wat op te rekken (8% van de spreiding) krijgt ook de
+# zwakste (en sterkste) speler een klein, maar zichtbaar stukje balk.
 def _index_bounds(column, invert):
     lo = float(df[column].min())
     hi = float(df[column].max())
     if hi == lo:
         hi = lo + 1.0
-    return (lo, hi, invert)
+    padding = (hi - lo) * 0.08
+    return (lo - padding, hi + padding, invert)
 
 INDEX_RANGES = {
     "agility": _index_bounds("agility_zonder_bal_s", True),
