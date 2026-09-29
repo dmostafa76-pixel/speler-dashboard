@@ -1258,6 +1258,36 @@ with col_sprint_scatter:
                 line: { color: "#d1d5db", width: 1, dash: "dot" },
             },
         ],
+        annotations: [
+            {
+                x: 0.97, xref: "x domain", xanchor: "right",
+                y: 0.95, yref: "y domain", yanchor: "top",
+                text: "Elite atleet",
+                showarrow: false,
+                font: { size: 10, color: "#9ca3af" },
+            },
+            {
+                x: 0.03, xref: "x domain", xanchor: "left",
+                y: 0.95, yref: "y domain", yanchor: "top",
+                text: "Diesel / long-strider",
+                showarrow: false,
+                font: { size: 10, color: "#9ca3af" },
+            },
+            {
+                x: 0.97, xref: "x domain", xanchor: "right",
+                y: 0.05, yref: "y domain", yanchor: "bottom",
+                text: "Explosieve versneller",
+                showarrow: false,
+                font: { size: 10, color: "#9ca3af" },
+            },
+            {
+                x: 0.03, xref: "x domain", xanchor: "left",
+                y: 0.05, yref: "y domain", yanchor: "bottom",
+                text: "Niet-explosief",
+                showarrow: false,
+                font: { size: 10, color: "#9ca3af" },
+            },
+        ],
     };
 
     Plotly.newPlot("sprintScatter", TRACES, layout, { displayModeBar: false, responsive: true })
