@@ -1196,8 +1196,13 @@ with col_sprint_scatter:
     .card { background: #ffffff; border-radius: 14px; padding: 1.5rem 1.75rem; }
     .card-title { color: #111827; font-size: 1.05rem; font-weight: 700; }
     .card-subtitle { color: #9ca3af; font-size: 0.8rem; margin-bottom: 1rem; }
+    .quad-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem 1.5rem; margin-top: 1rem; }
+    .quad-box { background: #f9fafb; border-radius: 10px; padding: 0.6rem 0.8rem; }
+    .quad-title { font-weight: 700; font-size: 0.78rem; color: #111827; margin-bottom: 0.15rem; }
+    .quad-desc { font-size: 0.72rem; color: #9ca3af; }
     @media (max-width: 640px) {
         .card { padding: 1.1rem 1.1rem; }
+        .quad-legend { grid-template-columns: 1fr; }
     }
 </style>
 </head>
@@ -1206,6 +1211,24 @@ with col_sprint_scatter:
         <div class="card-title">Acceleratie vs Topsnelheid</div>
         <div class="card-subtitle">Sprinttijden analyse</div>
         <div id="sprintScatter" style="width:100%; height:380px;"></div>
+        <div class="quad-legend">
+            <div class="quad-box">
+                <div class="quad-title">Elite atleet</div>
+                <div class="quad-desc">Hoge acceleratie + hoge topsnelheid</div>
+            </div>
+            <div class="quad-box">
+                <div class="quad-title">Diesel / long-strider</div>
+                <div class="quad-desc">Lage acceleratie + hoge topsnelheid</div>
+            </div>
+            <div class="quad-box">
+                <div class="quad-title">Explosieve versneller</div>
+                <div class="quad-desc">Hoge acceleratie + lage topsnelheid</div>
+            </div>
+            <div class="quad-box">
+                <div class="quad-title">Niet-explosief</div>
+                <div class="quad-desc">Lage acceleratie + lage topsnelheid</div>
+            </div>
+        </div>
     </div>
 
 <script>
@@ -1295,7 +1318,7 @@ with col_sprint_scatter:
         .replace("__AVG_ACCEL_SCATTER_JSON__", AVG_ACCEL_SCATTER_JSON)
         .replace("__AVG_TOP_SCATTER_JSON__", AVG_TOP_SCATTER_JSON)
     )
-    components.html(sprint_scatter_out, height=490, scrolling=False)
+    components.html(sprint_scatter_out, height=600, scrolling=False)
 
 # --- Acceleratie / Topsnelheid / Totaal (tabbed bar chart) ---
 with col_sprint_bar:
