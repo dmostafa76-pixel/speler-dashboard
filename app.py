@@ -237,10 +237,10 @@ def load_data(team_slug):
 df = load_data(TEAM_SLUG)
 
 POSITION_COLORS = {
-    "Attacker": "#ef4444",
-    "Midfielder": "#3b82f6",
-    "Defender": "#22c55e",
-    "Goalkeeper": "#f97316",
+    "Attacker": "#C97A6B",
+    "Midfielder": "#6F8FCF",
+    "Defender": "#7FB77E",
+    "Goalkeeper": "#D8A653",
 }
 POSITION_LABELS_NL = {
     "Attacker": "Aanvaller",
@@ -1474,26 +1474,14 @@ with j2:
         <div class="metric-sub green">{best_sprong_row['sprong_cm']:.0f} cm</div>
     </div>""", unsafe_allow_html=True)
 
-# --- Verticale Sprong per Speler (bar chart, kleur o.b.v. Explosive Power) ---
-if "power_watt" in df.columns:
-    power_tier = pd.qcut(df["power_watt"], q=3, labels=["Lage Explosieve Power", "Gemiddelde Explosieve Power", "Hoge Explosieve Power"])
-else:
-    power_tier = pd.Series(["Gemiddelde Explosieve Power"] * len(df), index=df.index)
-
-TIER_COLORS = {
-    "Lage Explosieve Power": "#ef4444",
-    "Gemiddelde Explosieve Power": "#f59e0b",
-    "Hoge Explosieve Power": "#22c55e",
-}
-
+# --- Verticale Sprong per Speler (bar chart, kleur o.b.v. positie) ---
 jump_df = df.copy()
-jump_df["power_tier"] = power_tier
 jump_df = jump_df.sort_values("sprong_cm", ascending=False)
 
 JUMP_NAMES_JSON = json.dumps(jump_df["naam"].tolist(), ensure_ascii=False)
 JUMP_VALUES_JSON = json.dumps([float(v) for v in jump_df["sprong_cm"]], ensure_ascii=False)
 JUMP_COLORS_JSON = json.dumps(
-    [TIER_COLORS.get(t, "#6b7280") for t in jump_df["power_tier"]], ensure_ascii=False
+    [POSITION_COLORS.get(p, "#6b7280") for p in jump_df["positie"]], ensure_ascii=False
 )
 AVG_SPRONG_JSON = json.dumps(avg_sprong, ensure_ascii=False)
 
@@ -1527,7 +1515,7 @@ JUMP_HTML_TEMPLATE = """
         <div class="top-row">
             <div>
                 <div class="card-title">Verticale Sprong per Speler</div>
-                <div class="card-subtitle">Kleur gebaseerd op explosieve kracht</div>
+                <div class="card-subtitle">Kleur gebaseerd op positie</div>
             </div>
             <div class="toggle-wrap">
                 <input type="checkbox" id="avgToggle" checked />
@@ -1535,15 +1523,18 @@ JUMP_HTML_TEMPLATE = """
             </div>
         </div>
         <div id="jumpChart" style="width:100%; height:480px;"></div>
-        <div class="legend">
-            <div><span class="dot" style="background:#ef4444;"></span>Lage Explosieve Power</div>
-            <div><span class="dot" style="background:#f59e0b;"></span>Gemiddelde Explosieve Power</div>
-            <div><span class="dot" style="background:#22c55e;"></span>Hoge Explosieve Power</div>
-        </div>
+        <div class="legend" id="legendBox"></div>
     </div>
 
 <script>
     var NAMES = __JUMP_NAMES_JSON__;
+    var POSITION_LEGEND = __POSITION_LEGEND_JSON__;
+
+    var legendHtml = "";
+    POSITION_LEGEND.forEach(function (item) {
+        legendHtml += '<div><span class="dot" style="background:' + item.color + ';"></span>' + item.label + "</div>";
+    });
+    document.getElementById("legendBox").innerHTML = legendHtml;
     var VALUES = __JUMP_VALUES_JSON__;
     var COLORS = __JUMP_COLORS_JSON__;
     var AVG = __AVG_SPRONG_JSON__;
@@ -1635,6 +1626,7 @@ jump_html_out = (
     .replace("__JUMP_VALUES_JSON__", JUMP_VALUES_JSON)
     .replace("__JUMP_COLORS_JSON__", JUMP_COLORS_JSON)
     .replace("__AVG_SPRONG_JSON__", AVG_SPRONG_JSON)
+    .replace("__POSITION_LEGEND_JSON__", POSITION_LEGEND_JSON)
 )
 components.html(jump_html_out, height=620, scrolling=False)
 
@@ -1665,16 +1657,7 @@ with u2:
     </div>""", unsafe_allow_html=True)
 
 # --- Stamina per Speler (bar chart, kleur t.o.v. teamgemiddelde) ---
-def stamina_kleur(value, avg):
-    diff_pct = (value - avg) / avg * 100
-    if diff_pct <= -5:
-        return "#ef4444"
-    elif diff_pct >= 5:
-        return "#22c55e"
-    return "#f59e0b"
-
 stamina_df = df.copy()
-stamina_df["stamina_kleur"] = stamina_df["afstand_m"].apply(lambda v: stamina_kleur(v, avg_afstand_m))
 stamina_df = stamina_df.sort_values("afstand_m", ascending=False)
 
 # Benchmark TopEnd Sport (Adults only) — Yo-Yo IR1 classificatie t.o.v. een
@@ -1690,7 +1673,9 @@ else:
 
 STAMINA_NAMES_JSON = json.dumps(stamina_df["naam"].tolist(), ensure_ascii=False)
 STAMINA_VALUES_JSON = json.dumps([float(v) / 1000 for v in stamina_df["afstand_m"]], ensure_ascii=False)
-STAMINA_COLORS_JSON = json.dumps(stamina_df["stamina_kleur"].tolist(), ensure_ascii=False)
+STAMINA_COLORS_JSON = json.dumps(
+    [POSITION_COLORS.get(p, "#6b7280") for p in stamina_df["positie"]], ensure_ascii=False
+)
 AVG_AFSTAND_KM_JSON = json.dumps(avg_afstand_m / 1000, ensure_ascii=False)
 
 STAMINA_HTML_TEMPLATE = """
@@ -1723,7 +1708,7 @@ STAMINA_HTML_TEMPLATE = """
         <div class="top-row">
             <div>
                 <div class="card-title">Stamina per Speler</div>
-                <div class="card-subtitle">Kleuren tonen prestatie t.o.v. teamgemiddelde</div>
+                <div class="card-subtitle">Kleur gebaseerd op positie</div>
             </div>
             <div class="toggle-wrap">
                 <input type="checkbox" id="avgToggle" checked />
@@ -1731,11 +1716,7 @@ STAMINA_HTML_TEMPLATE = """
             </div>
         </div>
         <div id="staminaChart" style="width:100%; height:480px;"></div>
-        <div class="legend">
-            <div><span class="dot" style="background:#ef4444;"></span>Onder gemiddelde (&le;-5%)</div>
-            <div><span class="dot" style="background:#f59e0b;"></span>Rond gemiddelde (&plusmn;5%)</div>
-            <div><span class="dot" style="background:#22c55e;"></span>Boven gemiddelde (&ge;+5%)</div>
-        </div>
+        <div class="legend" id="legendBox"></div>
     </div>
 
 <script>
@@ -1743,6 +1724,13 @@ STAMINA_HTML_TEMPLATE = """
     var VALUES = __STAMINA_VALUES_JSON__;
     var COLORS = __STAMINA_COLORS_JSON__;
     var AVG_KM = __AVG_AFSTAND_KM_JSON__;
+    var POSITION_LEGEND = __POSITION_LEGEND_JSON__;
+
+    var legendHtml = "";
+    POSITION_LEGEND.forEach(function (item) {
+        legendHtml += '<div><span class="dot" style="background:' + item.color + ';"></span>' + item.label + "</div>";
+    });
+    document.getElementById("legendBox").innerHTML = legendHtml;
 
     var avgToggle = document.getElementById("avgToggle");
     var currentOpacity = 1;
@@ -1831,6 +1819,7 @@ stamina_html_out = (
     .replace("__STAMINA_VALUES_JSON__", STAMINA_VALUES_JSON)
     .replace("__STAMINA_COLORS_JSON__", STAMINA_COLORS_JSON)
     .replace("__AVG_AFSTAND_KM_JSON__", AVG_AFSTAND_KM_JSON)
+    .replace("__POSITION_LEGEND_JSON__", POSITION_LEGEND_JSON)
 )
 components.html(stamina_html_out, height=620, scrolling=False)
 
