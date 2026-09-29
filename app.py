@@ -1249,13 +1249,13 @@ with col_sprint_scatter:
                 type: "line",
                 x0: AVG_ACCEL, x1: AVG_ACCEL,
                 y0: 0, y1: 1, yref: "paper",
-                line: { color: "#d1d5db", width: 1, dash: "dot" },
+                line: { color: "#6b7280", width: 1.5, dash: "dash" },
             },
             {
                 type: "line",
                 y0: AVG_TOP, y1: AVG_TOP,
                 x0: 0, x1: 1, xref: "paper",
-                line: { color: "#d1d5db", width: 1, dash: "dot" },
+                line: { color: "#6b7280", width: 1.5, dash: "dash" },
             },
         ],
         annotations: [
