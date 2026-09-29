@@ -1258,39 +1258,10 @@ with col_sprint_scatter:
                 line: { color: "#d1d5db", width: 1, dash: "dot" },
             },
         ],
-        annotations: [
-            {
-                x: 1, xref: "paper", xanchor: "right",
-                y: 1, yref: "paper", yanchor: "top",
-                text: "Elite atleet",
-                showarrow: false,
-                font: { size: 10, color: "#9ca3af" },
-            },
-            {
-                x: 0, xref: "paper", xanchor: "left",
-                y: 1, yref: "paper", yanchor: "top",
-                text: "Diesel / long-strider",
-                showarrow: false,
-                font: { size: 10, color: "#9ca3af" },
-            },
-            {
-                x: 1, xref: "paper", xanchor: "right",
-                y: 0, yref: "paper", yanchor: "bottom",
-                text: "Explosieve versneller",
-                showarrow: false,
-                font: { size: 10, color: "#9ca3af" },
-            },
-            {
-                x: 0, xref: "paper", xanchor: "left",
-                y: 0, yref: "paper", yanchor: "bottom",
-                text: "Niet-explosief",
-                showarrow: false,
-                font: { size: 10, color: "#9ca3af" },
-            },
-        ],
     };
 
-    Plotly.newPlot("sprintScatter", TRACES, layout, { displayModeBar: false, responsive: true });
+    Plotly.newPlot("sprintScatter", TRACES, layout, { displayModeBar: false, responsive: true })
+        .then(function () { resizeFrame(); });
 
     function resizeFrame() {
         var height = document.body.scrollHeight;
@@ -1318,7 +1289,7 @@ with col_sprint_scatter:
         .replace("__AVG_ACCEL_SCATTER_JSON__", AVG_ACCEL_SCATTER_JSON)
         .replace("__AVG_TOP_SCATTER_JSON__", AVG_TOP_SCATTER_JSON)
     )
-    components.html(sprint_scatter_out, height=600, scrolling=False)
+    components.html(sprint_scatter_out, height=780, scrolling=False)
 
 # --- Acceleratie / Topsnelheid / Totaal (tabbed bar chart) ---
 with col_sprint_bar:
