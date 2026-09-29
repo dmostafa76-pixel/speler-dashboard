@@ -1547,21 +1547,22 @@ JUMP_HTML_TEMPLATE = """
     }
 
     var layout = {
-        xaxis: { title: null, automargin: true, ticksuffix: " cm" },
-        yaxis: { title: null, autorange: "reversed", automargin: true },
+        xaxis: { title: null, automargin: true, tickangle: -30 },
+        yaxis: { title: null, automargin: true, ticksuffix: " cm" },
         height: 480,
-        margin: { l: 10, r: 20, t: 30, b: 30 },
+        margin: { l: 50, r: 20, t: 30, b: 90 },
         paper_bgcolor: "white",
         plot_bgcolor: "white",
         shapes: [{
             type: "line",
-            x0: AVG, x1: AVG,
-            y0: 0, y1: 1, yref: "paper",
+            y0: AVG, y1: AVG,
+            x0: 0, x1: 1, xref: "paper",
             line: { color: "#6366f1", width: 1.5, dash: "dash" },
             opacity: 1,
         }],
         annotations: [{
-            x: AVG, y: 1, yref: "paper", yanchor: "bottom",
+            x: 0, xref: "paper", xanchor: "left",
+            y: AVG, yanchor: "bottom",
             text: "Team gem.: " + AVG.toFixed(1) + " cm",
             showarrow: false,
             font: { size: 11, color: "#6366f1" },
@@ -1571,9 +1572,8 @@ JUMP_HTML_TEMPLATE = """
 
     Plotly.newPlot("jumpChart", [{
         type: "bar",
-        orientation: "h",
-        x: VALUES,
-        y: NAMES,
+        x: NAMES,
+        y: VALUES,
         marker: { color: COLORS },
     }], layout, { displayModeBar: false, responsive: true });
 
