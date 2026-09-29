@@ -937,14 +937,14 @@ with c3:
     <div class="metric-card">
         <div class="metric-label">&#8599; Beste Speler</div>
         <div class="metric-value green">{best_row['naam']}</div>
-        <div class="metric-sub green">{best_row['agility_zonder_bal_s']:.2f}s</div>
+        <div class="metric-sub green" style="font-size:1.05rem; font-weight:700;">{best_row['agility_zonder_bal_s']:.2f}s</div>
     </div>""", unsafe_allow_html=True)
 with c4:
     st.markdown(f"""
     <div class="metric-card">
         <div class="metric-label">&#8600; Zwakste Speler</div>
         <div class="metric-value red">{worst_row['naam']}</div>
-        <div class="metric-sub red">{worst_row['agility_zonder_bal_s']:.2f}s</div>
+        <div class="metric-sub red" style="font-size:1.05rem; font-weight:700;">{worst_row['agility_zonder_bal_s']:.2f}s</div>
     </div>""", unsafe_allow_html=True)
 
 
@@ -1471,7 +1471,7 @@ with j2:
     <div class="metric-card">
         <div class="metric-label">&#127942; Beste Sprong</div>
         <div class="metric-value">{best_sprong_row['naam']}</div>
-        <div class="metric-sub green">{best_sprong_row['sprong_cm']:.0f} cm</div>
+        <div class="metric-sub green" style="font-size:1.05rem; font-weight:700;">{best_sprong_row['sprong_cm']:.0f} cm</div>
     </div>""", unsafe_allow_html=True)
 
 # --- Verticale Sprong per Speler (bar chart, kleur o.b.v. positie) ---
@@ -1651,9 +1651,9 @@ with u1:
 with u2:
     st.markdown(f"""
     <div class="metric-card">
-        <div class="metric-label">Beste Prestatie</div>
-        <div class="metric-value">{best_afstand_row['afstand_m'] / 1000:.2f} km</div>
-        <div class="metric-sub green">{best_afstand_row['naam']}</div>
+        <div class="metric-label">&#127942; Beste Prestatie</div>
+        <div class="metric-value">{best_afstand_row['naam']}</div>
+        <div class="metric-sub green" style="font-size:1.05rem; font-weight:700;">{best_afstand_row['afstand_m'] / 1000:.2f} km</div>
     </div>""", unsafe_allow_html=True)
 
 # --- Stamina per Speler (bar chart, kleur t.o.v. teamgemiddelde) ---
