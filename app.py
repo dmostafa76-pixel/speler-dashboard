@@ -1179,6 +1179,8 @@ with col_sprint_scatter:
         })
 
     SPRINT_SCATTER_JSON = json.dumps(SPRINT_SCATTER_TRACES, ensure_ascii=False)
+    AVG_ACCEL_SCATTER_JSON = json.dumps(avg_accel, ensure_ascii=False)
+    AVG_TOP_SCATTER_JSON = json.dumps(avg_top, ensure_ascii=False)
 
     SPRINT_SCATTER_TEMPLATE = """
 <!DOCTYPE html>
@@ -1208,15 +1210,61 @@ with col_sprint_scatter:
 
 <script>
     var TRACES = __SPRINT_SCATTER_JSON__;
+    var AVG_ACCEL = __AVG_ACCEL_SCATTER_JSON__;
+    var AVG_TOP = __AVG_TOP_SCATTER_JSON__;
 
     var layout = {
         xaxis: { title: "Acceleratie (km/h)", automargin: true },
         yaxis: { title: "Topsnelheid (km/h)", automargin: true },
         height: 380,
-        margin: { l: 10, r: 10, t: 10, b: 10 },
+        margin: { l: 10, r: 10, t: 30, b: 10 },
         legend: { orientation: "h", yanchor: "bottom", y: -0.35 },
         paper_bgcolor: "white",
         plot_bgcolor: "white",
+        shapes: [
+            {
+                type: "line",
+                x0: AVG_ACCEL, x1: AVG_ACCEL,
+                y0: 0, y1: 1, yref: "paper",
+                line: { color: "#d1d5db", width: 1, dash: "dot" },
+            },
+            {
+                type: "line",
+                y0: AVG_TOP, y1: AVG_TOP,
+                x0: 0, x1: 1, xref: "paper",
+                line: { color: "#d1d5db", width: 1, dash: "dot" },
+            },
+        ],
+        annotations: [
+            {
+                x: 1, xref: "paper", xanchor: "right",
+                y: 1, yref: "paper", yanchor: "top",
+                text: "Elite atleet",
+                showarrow: false,
+                font: { size: 10, color: "#9ca3af" },
+            },
+            {
+                x: 0, xref: "paper", xanchor: "left",
+                y: 1, yref: "paper", yanchor: "top",
+                text: "Diesel / long-strider",
+                showarrow: false,
+                font: { size: 10, color: "#9ca3af" },
+            },
+            {
+                x: 1, xref: "paper", xanchor: "right",
+                y: 0, yref: "paper", yanchor: "bottom",
+                text: "Explosieve versneller",
+                showarrow: false,
+                font: { size: 10, color: "#9ca3af" },
+            },
+            {
+                x: 0, xref: "paper", xanchor: "left",
+                y: 0, yref: "paper", yanchor: "bottom",
+                text: "Niet-explosief",
+                showarrow: false,
+                font: { size: 10, color: "#9ca3af" },
+            },
+        ],
     };
 
     Plotly.newPlot("sprintScatter", TRACES, layout, { displayModeBar: false, responsive: true });
@@ -1241,8 +1289,13 @@ with col_sprint_scatter:
 </html>
 """
 
-    sprint_scatter_out = SPRINT_SCATTER_TEMPLATE.replace("__SPRINT_SCATTER_JSON__", SPRINT_SCATTER_JSON)
-    components.html(sprint_scatter_out, height=470, scrolling=False)
+    sprint_scatter_out = (
+        SPRINT_SCATTER_TEMPLATE
+        .replace("__SPRINT_SCATTER_JSON__", SPRINT_SCATTER_JSON)
+        .replace("__AVG_ACCEL_SCATTER_JSON__", AVG_ACCEL_SCATTER_JSON)
+        .replace("__AVG_TOP_SCATTER_JSON__", AVG_TOP_SCATTER_JSON)
+    )
+    components.html(sprint_scatter_out, height=490, scrolling=False)
 
 # --- Acceleratie / Topsnelheid / Totaal (tabbed bar chart) ---
 with col_sprint_bar:
