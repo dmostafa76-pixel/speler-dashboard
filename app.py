@@ -1636,14 +1636,10 @@ st.markdown('<div class="dash-title">Uithoudingsvermogen</div>', unsafe_allow_ht
 st.markdown('<div class="dash-subtitle">Afgelegde afstand tijdens wedstrijd/training</div>', unsafe_allow_html=True)
 st.markdown('<div class="badge-pill">Test: Yo-Yo Intermittent Recovery Test Level 1</div>', unsafe_allow_html=True)
 
-# NB: de brondata (afstand_m) ligt op een schaal van ~250-2300 meter.
-# REFERENTIE_M hieronder is een PLACEHOLDER-waarde (geen echte professionele
-# norm) — pas dit aan zodra je de juiste referentiewaarde hebt.
-REFERENTIE_M = 2000.0
 avg_afstand_m = float(df["afstand_m"].mean())
 best_afstand_row = df.loc[df["afstand_m"].idxmax()]
 
-u1, u2, u3 = st.columns(3)
+u1, u2 = st.columns(2)
 with u1:
     st.markdown(f"""
     <div class="metric-card">
@@ -1657,13 +1653,6 @@ with u2:
         <div class="metric-label">Beste Prestatie</div>
         <div class="metric-value">{best_afstand_row['afstand_m'] / 1000:.2f} km</div>
         <div class="metric-sub green">{best_afstand_row['naam']}</div>
-    </div>""", unsafe_allow_html=True)
-with u3:
-    st.markdown(f"""
-    <div class="metric-card">
-        <div class="metric-label">Referentiewaarde</div>
-        <div class="metric-value">{REFERENTIE_M / 1000:.2f} km</div>
-        <div class="metric-sub">Professioneel niveau</div>
     </div>""", unsafe_allow_html=True)
 
 # --- Stamina per Speler (bar chart, kleur t.o.v. teamgemiddelde) ---
@@ -1694,7 +1683,6 @@ STAMINA_NAMES_JSON = json.dumps(stamina_df["naam"].tolist(), ensure_ascii=False)
 STAMINA_VALUES_JSON = json.dumps([float(v) / 1000 for v in stamina_df["afstand_m"]], ensure_ascii=False)
 STAMINA_COLORS_JSON = json.dumps(stamina_df["stamina_kleur"].tolist(), ensure_ascii=False)
 AVG_AFSTAND_KM_JSON = json.dumps(avg_afstand_m / 1000, ensure_ascii=False)
-REFERENTIE_KM_JSON = json.dumps(REFERENTIE_M / 1000, ensure_ascii=False)
 
 STAMINA_HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -1710,13 +1698,8 @@ STAMINA_HTML_TEMPLATE = """
     .top-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem; }
     .card-title { color: #111827; font-size: 1.05rem; font-weight: 700; }
     .card-subtitle { color: #9ca3af; font-size: 0.8rem; }
-    .tab-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-    .tab-btn {
-        border: none; border-radius: 8px; padding: 0.4rem 0.9rem;
-        font-size: 0.85rem; font-weight: 600; cursor: pointer;
-        background: #f1f5f9; color: #475569;
-    }
-    .tab-btn.active { background: #4f46e5; color: #ffffff; }
+    .toggle-wrap { display: flex; align-items: center; gap: 0.5rem; white-space: nowrap; }
+    .toggle-wrap label { font-size: 0.9rem; color: #111827; }
     .legend { display: flex; gap: 1.5rem; justify-content: center; font-size: 0.85rem; color: #374151; margin-top: 0.75rem; flex-wrap: wrap; }
     .legend span.dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; }
     @media (max-width: 640px) {
@@ -1732,9 +1715,9 @@ STAMINA_HTML_TEMPLATE = """
                 <div class="card-title">Stamina per Speler</div>
                 <div class="card-subtitle">Kleuren tonen prestatie t.o.v. teamgemiddelde</div>
             </div>
-            <div class="tab-row" id="refTabRow">
-                <button class="tab-btn active" data-mode="team">Teamgemiddelde</button>
-                <button class="tab-btn" data-mode="ref">Referentiewaarde</button>
+            <div class="toggle-wrap">
+                <input type="checkbox" id="avgToggle" checked />
+                <label for="avgToggle">Team gemiddelde</label>
             </div>
         </div>
         <div id="staminaChart" style="width:100%; height:480px;"></div>
@@ -1750,40 +1733,36 @@ STAMINA_HTML_TEMPLATE = """
     var VALUES = __STAMINA_VALUES_JSON__;
     var COLORS = __STAMINA_COLORS_JSON__;
     var AVG_KM = __AVG_AFSTAND_KM_JSON__;
-    var REF_KM = __REFERENTIE_KM_JSON__;
 
-    var refTabRow = document.getElementById("refTabRow");
-    var currentX = AVG_KM;
-    var currentMode = "team";
+    var avgToggle = document.getElementById("avgToggle");
+    var currentOpacity = 1;
 
     function easeInOutCubic(t) {
         return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
     }
 
-    var baseLayout = {
+    var layout = {
         xaxis: { title: null, automargin: true, ticksuffix: " km" },
         yaxis: { title: null, autorange: "reversed", automargin: true },
         height: 480,
-        margin: { l: 10, r: 20, t: 10, b: 30 },
+        margin: { l: 10, r: 20, t: 30, b: 30 },
         paper_bgcolor: "white",
         plot_bgcolor: "white",
+        shapes: [{
+            type: "line",
+            x0: AVG_KM, x1: AVG_KM,
+            y0: 0, y1: 1, yref: "paper",
+            line: { color: "#4f46e5", width: 1.5, dash: "dash" },
+            opacity: 1,
+        }],
+        annotations: [{
+            x: AVG_KM, y: 1, yref: "paper", yanchor: "bottom",
+            text: "Team gem.: " + AVG_KM.toFixed(2) + " km",
+            showarrow: false,
+            font: { size: 11, color: "#4f46e5" },
+            opacity: 1,
+        }],
     };
-
-    function makeShape(xVal, label) {
-        return {
-            shapes: [{
-                type: "line",
-                x0: xVal, x1: xVal,
-                y0: 0, y1: 1, yref: "paper",
-                line: { color: "#4f46e5", width: 1.5, dash: "dash" },
-            }],
-            annotations: [{
-                x: xVal, y: 1, yref: "paper", yanchor: "bottom",
-                text: label, showarrow: false,
-                font: { size: 11, color: "#4f46e5" },
-            }],
-        };
-    }
 
     Plotly.newPlot("staminaChart", [{
         type: "bar",
@@ -1791,47 +1770,29 @@ STAMINA_HTML_TEMPLATE = """
         x: VALUES,
         y: NAMES,
         marker: { color: COLORS },
-    }], Object.assign({}, baseLayout, makeShape(AVG_KM, "Team")), { displayModeBar: false, responsive: true });
+    }], layout, { displayModeBar: false, responsive: true });
 
-    function animateLineTo(targetX, label) {
-        var startX = currentX;
-        var duration = 450;
+    function animateLineOpacity(target) {
+        var start = currentOpacity;
+        var duration = 400;
         var startTime = null;
-
         function step(ts) {
             if (!startTime) startTime = ts;
             var t = Math.min((ts - startTime) / duration, 1);
             var eased = easeInOutCubic(t);
-            var val = startX + (targetX - startX) * eased;
-            Plotly.relayout("staminaChart", {
-                "shapes[0].x0": val,
-                "shapes[0].x1": val,
-                "annotations[0].x": val,
-                "annotations[0].text": label,
-            });
+            var val = start + (target - start) * eased;
+            Plotly.relayout("staminaChart", { "shapes[0].opacity": val, "annotations[0].opacity": val });
             if (t < 1) {
                 requestAnimationFrame(step);
             } else {
-                currentX = targetX;
+                currentOpacity = target;
             }
         }
         requestAnimationFrame(step);
     }
 
-    Array.prototype.forEach.call(refTabRow.children, function (btn) {
-        btn.addEventListener("click", function () {
-            var mode = btn.dataset.mode;
-            if (mode === currentMode) return;
-            currentMode = mode;
-            Array.prototype.forEach.call(refTabRow.children, function (el) {
-                el.classList.toggle("active", el.dataset.mode === mode);
-            });
-            if (mode === "team") {
-                animateLineTo(AVG_KM, "Team");
-            } else {
-                animateLineTo(REF_KM, "Ref.");
-            }
-        });
+    avgToggle.addEventListener("change", function () {
+        animateLineOpacity(avgToggle.checked ? 1 : 0);
     });
 
     function resizeFrame() {
@@ -1860,7 +1821,6 @@ stamina_html_out = (
     .replace("__STAMINA_VALUES_JSON__", STAMINA_VALUES_JSON)
     .replace("__STAMINA_COLORS_JSON__", STAMINA_COLORS_JSON)
     .replace("__AVG_AFSTAND_KM_JSON__", AVG_AFSTAND_KM_JSON)
-    .replace("__REFERENTIE_KM_JSON__", REFERENTIE_KM_JSON)
 )
 components.html(stamina_html_out, height=620, scrolling=False)
 
