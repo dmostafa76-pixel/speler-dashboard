@@ -12,6 +12,7 @@ from data_utils import (
     classify_topend_benchmark,
     TOPEND_BENCHMARK_ORDER,
     TOPEND_BENCHMARK_COLORS,
+    TOPEND_BENCHMARK_TEXT_COLORS,
 )
 
 st.set_page_config(page_title="Speler Prestatie Dashboard", layout="wide")
@@ -237,10 +238,10 @@ def load_data(team_slug):
 df = load_data(TEAM_SLUG)
 
 POSITION_COLORS = {
-    "Attacker": "#D08C7A",
-    "Midfielder": "#7B95AC",
-    "Defender": "#8FA888",
-    "Goalkeeper": "#D4A574",
+    "Attacker": "#E8A9A9",
+    "Midfielder": "#A9C4E8",
+    "Defender": "#ABD4B4",
+    "Goalkeeper": "#EFCB9E",
 }
 POSITION_LABELS_NL = {
     "Attacker": "Aanvaller",
@@ -348,11 +349,11 @@ st.markdown('<div class="dash-title">Prestatie T-Score</div>', unsafe_allow_html
 st.markdown('<div class="dash-subtitle">Afwijking t.o.v. het teamgemiddelde (schaal 50 ± 10) — vergelijk met het teamgemiddelde en/of een andere speler</div>', unsafe_allow_html=True)
 
 STAT_COLORS = {
-    "Agility": "#8FA888",
-    "Acceleratie": "#7B95AC",
-    "Max Snelheid": "#A487A8",
-    "Sprong": "#D4A574",
-    "Uithoud-vermogen": "#D08C7A",
+    "Agility": "#ABD4B4",
+    "Acceleratie": "#A9C4E8",
+    "Max Snelheid": "#D4C2E0",
+    "Sprong": "#EFCB9E",
+    "Uithoud-vermogen": "#E8A9A9",
 }
 STAT_LABELS = {
     "Agility": "Agility",
@@ -745,8 +746,8 @@ HTML_TEMPLATE = """
                 theta: thetaArr,
                 fill: "toself",
                 name: "Team Gemiddelde",
-                line: { color: "#7B95AC" },
-                fillcolor: "rgba(123,149,172,0.15)",
+                line: { color: "#A9C4E8" },
+                fillcolor: "rgba(169,196,232,0.15)",
             });
         }
         if (compareName && compareName !== name && PLAYERS[compareName]) {
@@ -759,8 +760,8 @@ HTML_TEMPLATE = """
                 theta: thetaArr,
                 fill: "toself",
                 name: compareName,
-                line: { color: "#A487A8" },
-                fillcolor: "rgba(164,135,168,0.15)",
+                line: { color: "#D4C2E0" },
+                fillcolor: "rgba(212,194,224,0.15)",
             });
         }
         traces.push({
@@ -769,8 +770,8 @@ HTML_TEMPLATE = """
             theta: thetaArr,
             fill: "toself",
             name: name,
-            line: { color: "#7FA8A0" },
-            fillcolor: "rgba(127,168,160,0.35)",
+            line: { color: "#A8DDD2" },
+            fillcolor: "rgba(168,221,210,0.35)",
         });
         return traces;
     }
@@ -778,12 +779,12 @@ HTML_TEMPLATE = """
     function updateLegend(name, compareName, showTeam) {
         var html = "";
         if (showTeam) {
-            html += '<div><span class="dot" style="background:#7B95AC;"></span>Team Gemiddelde</div>';
+            html += '<div><span class="dot" style="background:#A9C4E8;"></span>Team Gemiddelde</div>';
         }
         if (compareName && compareName !== name && PLAYERS[compareName]) {
-            html += '<div><span class="dot" style="background:#A487A8;"></span>' + compareName + "</div>";
+            html += '<div><span class="dot" style="background:#D4C2E0;"></span>' + compareName + "</div>";
         }
-        html += '<div><span class="dot" style="background:#7FA8A0;"></span>' + name + "</div>";
+        html += '<div><span class="dot" style="background:#A8DDD2;"></span>' + name + "</div>";
         document.getElementById("legendBox").innerHTML = html;
     }
 
@@ -1148,7 +1149,7 @@ with m3:
     <div class="metric-card">
         <div class="metric-label">&#9889; Meest Explosieve Speler</div>
         <div class="metric-value">{best_accel_row['naam']}</div>
-        <div class="metric-sub" style="color:#7B95AC; font-size:1.05rem; font-weight:700;">{best_accel_row['acceleratie_kmh']:.1f} km/h</div>
+        <div class="metric-sub" style="color:#A9C4E8; font-size:1.05rem; font-weight:700;">{best_accel_row['acceleratie_kmh']:.1f} km/h</div>
     </div>""", unsafe_allow_html=True)
 with m4:
     st.markdown(f"""
@@ -1284,7 +1285,7 @@ with col_sprint_bar:
         font-size: 0.85rem; font-weight: 600; cursor: pointer;
         background: #f1f5f9; color: #475569;
     }
-    .tab-btn.active { background: #9591B5; color: #ffffff; }
+    .tab-btn.active { background: #C3C9EA; color: #ffffff; }
     .legend { display: flex; gap: 1.5rem; justify-content: center; font-size: 0.85rem; color: #374151; margin-top: 0.75rem; flex-wrap: wrap; }
     .legend span.dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; }
     @media (max-width: 640px) {
@@ -1371,14 +1372,14 @@ with col_sprint_bar:
             type: "line",
             x0: d.avg, x1: d.avg,
             y0: 0, y1: 1, yref: "paper",
-            line: { color: "#D08C7A", width: 1.5, dash: "dash" },
+            line: { color: "#E8A9A9", width: 1.5, dash: "dash" },
             opacity: currentOpacity,
         };
         var annotation = {
             x: d.avg, y: 1, yref: "paper", yanchor: "bottom",
             text: "Team gem.: " + d.avg.toFixed(1) + " km/h",
             showarrow: false,
-            font: { size: 11, color: "#D08C7A" },
+            font: { size: 11, color: "#E8A9A9" },
             opacity: currentOpacity,
         };
         var layout = Object.assign({}, baseLayout, {
@@ -1481,9 +1482,9 @@ else:
     power_tier = pd.Series(["Gemiddelde Explosieve Power"] * len(df), index=df.index)
 
 TIER_COLORS = {
-    "Lage Explosieve Power": "#D08C7A",
-    "Gemiddelde Explosieve Power": "#C9B77E",
-    "Hoge Explosieve Power": "#8FA888",
+    "Lage Explosieve Power": "#E8A9A9",
+    "Gemiddelde Explosieve Power": "#F0DCA0",
+    "Hoge Explosieve Power": "#ABD4B4",
 }
 
 jump_df = df.copy()
@@ -1536,9 +1537,9 @@ JUMP_HTML_TEMPLATE = """
         </div>
         <div id="jumpChart" style="width:100%; height:480px;"></div>
         <div class="legend">
-            <div><span class="dot" style="background:#D08C7A;"></span>Lage Explosieve Power</div>
-            <div><span class="dot" style="background:#C9B77E;"></span>Gemiddelde Explosieve Power</div>
-            <div><span class="dot" style="background:#8FA888;"></span>Hoge Explosieve Power</div>
+            <div><span class="dot" style="background:#E8A9A9;"></span>Lage Explosieve Power</div>
+            <div><span class="dot" style="background:#F0DCA0;"></span>Gemiddelde Explosieve Power</div>
+            <div><span class="dot" style="background:#ABD4B4;"></span>Hoge Explosieve Power</div>
         </div>
     </div>
 
@@ -1566,14 +1567,14 @@ JUMP_HTML_TEMPLATE = """
             type: "line",
             x0: AVG, x1: AVG,
             y0: 0, y1: 1, yref: "paper",
-            line: { color: "#9591B5", width: 1.5, dash: "dash" },
+            line: { color: "#C3C9EA", width: 1.5, dash: "dash" },
             opacity: 1,
         }],
         annotations: [{
             x: AVG, y: 1, yref: "paper", yanchor: "bottom",
             text: "Team gem.: " + AVG.toFixed(1) + " cm",
             showarrow: false,
-            font: { size: 11, color: "#9591B5" },
+            font: { size: 11, color: "#C3C9EA" },
             opacity: 1,
         }],
     };
@@ -1668,10 +1669,10 @@ with u2:
 def stamina_kleur(value, avg):
     diff_pct = (value - avg) / avg * 100
     if diff_pct <= -5:
-        return "#D08C7A"
+        return "#E8A9A9"
     elif diff_pct >= 5:
-        return "#8FA888"
-    return "#C9B77E"
+        return "#ABD4B4"
+    return "#F0DCA0"
 
 stamina_df = df.copy()
 stamina_df["stamina_kleur"] = stamina_df["afstand_m"].apply(lambda v: stamina_kleur(v, avg_afstand_m))
@@ -1732,9 +1733,9 @@ STAMINA_HTML_TEMPLATE = """
         </div>
         <div id="staminaChart" style="width:100%; height:480px;"></div>
         <div class="legend">
-            <div><span class="dot" style="background:#D08C7A;"></span>Onder gemiddelde (&le;-5%)</div>
-            <div><span class="dot" style="background:#C9B77E;"></span>Rond gemiddelde (&plusmn;5%)</div>
-            <div><span class="dot" style="background:#8FA888;"></span>Boven gemiddelde (&ge;+5%)</div>
+            <div><span class="dot" style="background:#E8A9A9;"></span>Onder gemiddelde (&le;-5%)</div>
+            <div><span class="dot" style="background:#F0DCA0;"></span>Rond gemiddelde (&plusmn;5%)</div>
+            <div><span class="dot" style="background:#ABD4B4;"></span>Boven gemiddelde (&ge;+5%)</div>
         </div>
     </div>
 
@@ -1762,14 +1763,14 @@ STAMINA_HTML_TEMPLATE = """
             type: "line",
             x0: AVG_KM, x1: AVG_KM,
             y0: 0, y1: 1, yref: "paper",
-            line: { color: "#9591B5", width: 1.5, dash: "dash" },
+            line: { color: "#C3C9EA", width: 1.5, dash: "dash" },
             opacity: 1,
         }],
         annotations: [{
             x: AVG_KM, y: 1, yref: "paper", yanchor: "bottom",
             text: "Team gem.: " + AVG_KM.toFixed(2) + " km",
             showarrow: false,
-            font: { size: 11, color: "#9591B5" },
+            font: { size: 11, color: "#C3C9EA" },
             opacity: 1,
         }],
     };
@@ -1854,13 +1855,14 @@ if not benchmark_df.empty:
     badge_rows_html = ""
     for _, r in benchmark_df.iterrows():
         color = TOPEND_BENCHMARK_COLORS[r["benchmark"]]
+        text_color = TOPEND_BENCHMARK_TEXT_COLORS[r["benchmark"]]
         km_text = f'{r["afstand_m"] / 1000:.2f} km'
         badge_rows_html += f"""
         <div class="benchmark-row">
             <div class="benchmark-name">{r['naam']}</div>
             <div class="benchmark-right">
                 <span class="benchmark-km">{km_text}</span>
-                <span class="benchmark-badge" style="background-color:{color};">{r['benchmark']}</span>
+                <span class="benchmark-badge" style="background-color:{color}; color:{text_color};">{r['benchmark']}</span>
             </div>
         </div>"""
 
