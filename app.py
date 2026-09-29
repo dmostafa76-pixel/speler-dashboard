@@ -175,11 +175,11 @@ st.markdown("""
 
     .metric-label { color: #6b7280; font-size: 0.82rem; font-weight: 500; }
     .metric-value { color: #111827; font-size: 1.6rem; font-weight: 700; margin-top: 0.15rem; }
-    .metric-value.green { color: #16a34a; }
-    .metric-value.red { color: #dc2626; }
+    .metric-value.green { color: #5e8f68; }
+    .metric-value.red { color: #b06565; }
     .metric-sub { color: #9ca3af; font-size: 0.78rem; margin-top: 0.1rem; }
-    .metric-sub.green { color: #16a34a; }
-    .metric-sub.red { color: #dc2626; }
+    .metric-sub.green { color: #5e8f68; }
+    .metric-sub.red { color: #b06565; }
 
     .badge-pill { display: inline-block; background-color: #1f2547; color: #cdd3f0; border-radius: 999px;
                   padding: 0.35rem 0.9rem; font-size: 0.85rem; margin-bottom: 0.5rem; }
@@ -237,10 +237,10 @@ def load_data(team_slug):
 df = load_data(TEAM_SLUG)
 
 POSITION_COLORS = {
-    "Attacker": "#ef4444",
-    "Midfielder": "#3b82f6",
-    "Defender": "#22c55e",
-    "Goalkeeper": "#f97316",
+    "Attacker": "#c17b7b",
+    "Midfielder": "#7a93c4",
+    "Defender": "#7a9e7e",
+    "Goalkeeper": "#cf9660",
 }
 POSITION_LABELS_NL = {
     "Attacker": "Aanvaller",
@@ -348,11 +348,11 @@ st.markdown('<div class="dash-title">Prestatie T-Score</div>', unsafe_allow_html
 st.markdown('<div class="dash-subtitle">Afwijking t.o.v. het teamgemiddelde (schaal 50 ± 10) — vergelijk met het teamgemiddelde en/of een andere speler</div>', unsafe_allow_html=True)
 
 STAT_COLORS = {
-    "Agility": "#22c55e",
-    "Acceleratie": "#3b82f6",
-    "Max Snelheid": "#a855f7",
-    "Sprong": "#f97316",
-    "Uithoud-vermogen": "#ef4444",
+    "Agility": "#7a9e7e",
+    "Acceleratie": "#7a93c4",
+    "Max Snelheid": "#a68bc2",
+    "Sprong": "#cf9660",
+    "Uithoud-vermogen": "#c17b7b",
 }
 STAT_LABELS = {
     "Agility": "Agility",
@@ -745,8 +745,8 @@ HTML_TEMPLATE = """
                 theta: thetaArr,
                 fill: "toself",
                 name: "Team Gemiddelde",
-                line: { color: "#3b82f6" },
-                fillcolor: "rgba(59,130,246,0.15)",
+                line: { color: "#7a93c4" },
+                fillcolor: "rgba(122,147,196,0.15)",
             });
         }
         if (compareName && compareName !== name && PLAYERS[compareName]) {
@@ -759,8 +759,8 @@ HTML_TEMPLATE = """
                 theta: thetaArr,
                 fill: "toself",
                 name: compareName,
-                line: { color: "#8b5cf6" },
-                fillcolor: "rgba(139,92,246,0.15)",
+                line: { color: "#a68bc2" },
+                fillcolor: "rgba(166,139,194,0.15)",
             });
         }
         traces.push({
@@ -769,8 +769,8 @@ HTML_TEMPLATE = """
             theta: thetaArr,
             fill: "toself",
             name: name,
-            line: { color: "#14b8a6" },
-            fillcolor: "rgba(20,184,166,0.35)",
+            line: { color: "#6bab9f" },
+            fillcolor: "rgba(107,171,159,0.35)",
         });
         return traces;
     }
@@ -778,12 +778,12 @@ HTML_TEMPLATE = """
     function updateLegend(name, compareName, showTeam) {
         var html = "";
         if (showTeam) {
-            html += '<div><span class="dot" style="background:#3b82f6;"></span>Team Gemiddelde</div>';
+            html += '<div><span class="dot" style="background:#7a93c4;"></span>Team Gemiddelde</div>';
         }
         if (compareName && compareName !== name && PLAYERS[compareName]) {
-            html += '<div><span class="dot" style="background:#8b5cf6;"></span>' + compareName + "</div>";
+            html += '<div><span class="dot" style="background:#a68bc2;"></span>' + compareName + "</div>";
         }
-        html += '<div><span class="dot" style="background:#14b8a6;"></span>' + name + "</div>";
+        html += '<div><span class="dot" style="background:#6bab9f;"></span>' + name + "</div>";
         document.getElementById("legendBox").innerHTML = html;
     }
 
@@ -1148,7 +1148,7 @@ with m3:
     <div class="metric-card">
         <div class="metric-label">&#9889; Meest Explosieve Speler</div>
         <div class="metric-value">{best_accel_row['naam']}</div>
-        <div class="metric-sub" style="color:#3b82f6; font-size:1.05rem; font-weight:700;">{best_accel_row['acceleratie_kmh']:.1f} km/h</div>
+        <div class="metric-sub" style="color:#7a93c4; font-size:1.05rem; font-weight:700;">{best_accel_row['acceleratie_kmh']:.1f} km/h</div>
     </div>""", unsafe_allow_html=True)
 with m4:
     st.markdown(f"""
@@ -1284,7 +1284,7 @@ with col_sprint_bar:
         font-size: 0.85rem; font-weight: 600; cursor: pointer;
         background: #f1f5f9; color: #475569;
     }
-    .tab-btn.active { background: #4f46e5; color: #ffffff; }
+    .tab-btn.active { background: #7b7ec4; color: #ffffff; }
     .legend { display: flex; gap: 1.5rem; justify-content: center; font-size: 0.85rem; color: #374151; margin-top: 0.75rem; flex-wrap: wrap; }
     .legend span.dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; }
     @media (max-width: 640px) {
@@ -1371,14 +1371,14 @@ with col_sprint_bar:
             type: "line",
             x0: d.avg, x1: d.avg,
             y0: 0, y1: 1, yref: "paper",
-            line: { color: "#ef4444", width: 1.5, dash: "dash" },
+            line: { color: "#c17b7b", width: 1.5, dash: "dash" },
             opacity: currentOpacity,
         };
         var annotation = {
             x: d.avg, y: 1, yref: "paper", yanchor: "bottom",
             text: "Team gem.: " + d.avg.toFixed(1) + " km/h",
             showarrow: false,
-            font: { size: 11, color: "#ef4444" },
+            font: { size: 11, color: "#c17b7b" },
             opacity: currentOpacity,
         };
         var layout = Object.assign({}, baseLayout, {
@@ -1481,9 +1481,9 @@ else:
     power_tier = pd.Series(["Gemiddelde Explosieve Power"] * len(df), index=df.index)
 
 TIER_COLORS = {
-    "Lage Explosieve Power": "#ef4444",
-    "Gemiddelde Explosieve Power": "#f59e0b",
-    "Hoge Explosieve Power": "#22c55e",
+    "Lage Explosieve Power": "#c17b7b",
+    "Gemiddelde Explosieve Power": "#d1ac6a",
+    "Hoge Explosieve Power": "#7a9e7e",
 }
 
 jump_df = df.copy()
@@ -1536,9 +1536,9 @@ JUMP_HTML_TEMPLATE = """
         </div>
         <div id="jumpChart" style="width:100%; height:480px;"></div>
         <div class="legend">
-            <div><span class="dot" style="background:#ef4444;"></span>Lage Explosieve Power</div>
-            <div><span class="dot" style="background:#f59e0b;"></span>Gemiddelde Explosieve Power</div>
-            <div><span class="dot" style="background:#22c55e;"></span>Hoge Explosieve Power</div>
+            <div><span class="dot" style="background:#c17b7b;"></span>Lage Explosieve Power</div>
+            <div><span class="dot" style="background:#d1ac6a;"></span>Gemiddelde Explosieve Power</div>
+            <div><span class="dot" style="background:#7a9e7e;"></span>Hoge Explosieve Power</div>
         </div>
     </div>
 
@@ -1566,14 +1566,14 @@ JUMP_HTML_TEMPLATE = """
             type: "line",
             x0: AVG, x1: AVG,
             y0: 0, y1: 1, yref: "paper",
-            line: { color: "#6366f1", width: 1.5, dash: "dash" },
+            line: { color: "#7b7ec4", width: 1.5, dash: "dash" },
             opacity: 1,
         }],
         annotations: [{
             x: AVG, y: 1, yref: "paper", yanchor: "bottom",
             text: "Team gem.: " + AVG.toFixed(1) + " cm",
             showarrow: false,
-            font: { size: 11, color: "#6366f1" },
+            font: { size: 11, color: "#7b7ec4" },
             opacity: 1,
         }],
     };
@@ -1668,10 +1668,10 @@ with u2:
 def stamina_kleur(value, avg):
     diff_pct = (value - avg) / avg * 100
     if diff_pct <= -5:
-        return "#ef4444"
+        return "#c17b7b"
     elif diff_pct >= 5:
-        return "#22c55e"
-    return "#f59e0b"
+        return "#7a9e7e"
+    return "#d1ac6a"
 
 stamina_df = df.copy()
 stamina_df["stamina_kleur"] = stamina_df["afstand_m"].apply(lambda v: stamina_kleur(v, avg_afstand_m))
@@ -1732,9 +1732,9 @@ STAMINA_HTML_TEMPLATE = """
         </div>
         <div id="staminaChart" style="width:100%; height:480px;"></div>
         <div class="legend">
-            <div><span class="dot" style="background:#ef4444;"></span>Onder gemiddelde (&le;-5%)</div>
-            <div><span class="dot" style="background:#f59e0b;"></span>Rond gemiddelde (&plusmn;5%)</div>
-            <div><span class="dot" style="background:#22c55e;"></span>Boven gemiddelde (&ge;+5%)</div>
+            <div><span class="dot" style="background:#c17b7b;"></span>Onder gemiddelde (&le;-5%)</div>
+            <div><span class="dot" style="background:#d1ac6a;"></span>Rond gemiddelde (&plusmn;5%)</div>
+            <div><span class="dot" style="background:#7a9e7e;"></span>Boven gemiddelde (&ge;+5%)</div>
         </div>
     </div>
 
@@ -1762,14 +1762,14 @@ STAMINA_HTML_TEMPLATE = """
             type: "line",
             x0: AVG_KM, x1: AVG_KM,
             y0: 0, y1: 1, yref: "paper",
-            line: { color: "#4f46e5", width: 1.5, dash: "dash" },
+            line: { color: "#7b7ec4", width: 1.5, dash: "dash" },
             opacity: 1,
         }],
         annotations: [{
             x: AVG_KM, y: 1, yref: "paper", yanchor: "bottom",
             text: "Team gem.: " + AVG_KM.toFixed(2) + " km",
             showarrow: false,
-            font: { size: 11, color: "#4f46e5" },
+            font: { size: 11, color: "#7b7ec4" },
             opacity: 1,
         }],
     };
