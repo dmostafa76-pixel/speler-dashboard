@@ -250,8 +250,8 @@ POSITION_LABELS_NL = {
 }
 
 # invert=True betekent: lager is beter (bv. agility-tijd), dus het teken van
-# de z-score wordt omgedraaid zodat "verder naar buiten" altijd "beter"
-# betekent, ongeacht het onderdeel.
+# de onderliggende z-score wordt omgedraaid zodat "verder naar buiten" altijd
+# "beter" betekent, ongeacht het onderdeel.
 def _team_mean_std(column, invert):
     mean = float(df[column].mean())
     std = float(df[column].std(ddof=0))
@@ -265,19 +265,22 @@ TEAM_STATS = {
     "uithoudingsvermogen": _team_mean_std("afstand_m", False),        # meters
 }
 
-def zscore(value, mean, std, invert=False):
+def tscore(value, mean, std, invert=False):
+    """T-score: een z-score herschaald naar gemiddelde 50, spreiding 10.
+    Zelfde betekenis als een z-score, maar zonder negatieve getallen —
+    T=50 is gemiddeld, T=60 is 1 standaarddeviatie boven, T=40 eronder."""
     z = 0.0 if std == 0 else (value - mean) / std
     if invert:
         z = -z
-    return float(z)
+    return float(50 + 10 * z)
 
 def player_scores(row):
     return {
-        "Agility": zscore(row["agility_zonder_bal_s"], *TEAM_STATS["agility"][:2], invert=TEAM_STATS["agility"][2]),
-        "Acceleratie": zscore(row["acceleratie_kmh"], *TEAM_STATS["acceleratie"][:2]),
-        "Max Snelheid": zscore(row["max_snelheid_kmh"], *TEAM_STATS["max_snelheid"][:2]),
-        "Sprong": zscore(row["sprong_cm"], *TEAM_STATS["sprong"][:2]),
-        "Uithoud-vermogen": zscore(row["afstand_m"], *TEAM_STATS["uithoudingsvermogen"][:2]),
+        "Agility": tscore(row["agility_zonder_bal_s"], *TEAM_STATS["agility"][:2], invert=TEAM_STATS["agility"][2]),
+        "Acceleratie": tscore(row["acceleratie_kmh"], *TEAM_STATS["acceleratie"][:2]),
+        "Max Snelheid": tscore(row["max_snelheid_kmh"], *TEAM_STATS["max_snelheid"][:2]),
+        "Sprong": tscore(row["sprong_cm"], *TEAM_STATS["sprong"][:2]),
+        "Uithoud-vermogen": tscore(row["afstand_m"], *TEAM_STATS["uithoudingsvermogen"][:2]),
     }
 
 # De statbalken rechts van de spider chart gebruiken bewust géén z-score:
@@ -341,8 +344,8 @@ team_avg_text = {
 # =============================================================================
 # SECTIE 1 — PRESTATIE-INDEX (CLIENT-SIDE, MET ECHTE SMOOTH TRANSITIE)
 # =============================================================================
-st.markdown('<div class="dash-title">Prestatie Z-Score</div>', unsafe_allow_html=True)
-st.markdown('<div class="dash-subtitle">Afwijking t.o.v. het teamgemiddelde, in standaarddeviaties — vergelijk met het teamgemiddelde en/of een andere speler</div>', unsafe_allow_html=True)
+st.markdown('<div class="dash-title">Prestatie T-Score</div>', unsafe_allow_html=True)
+st.markdown('<div class="dash-subtitle">Afwijking t.o.v. het teamgemiddelde (schaal 50 ± 10) — vergelijk met het teamgemiddelde en/of een andere speler</div>', unsafe_allow_html=True)
 
 STAT_COLORS = {
     "Agility": "#22c55e",
@@ -593,9 +596,10 @@ HTML_TEMPLATE = """
                     = team gemiddelde
                 </div>
                 <div class="note-box">
-                    <b>Z-score</b><br>
-                    Hoeveel standaarddeviaties een speler van het teamgemiddelde afwijkt.
-                    0 = gemiddeld, +2 = sterk boven, &minus;2 = sterk onder het gemiddelde van dit team.
+                    <b>T-score</b><br>
+                    Hoeveel een speler van het teamgemiddelde afwijkt, op een schaal met gemiddelde 50
+                    en spreiding 10. 50 = gemiddeld, 60 = sterk boven, 40 = sterk onder het gemiddelde
+                    van dit team.
                 </div>
             </div>
         </div>
@@ -647,8 +651,8 @@ HTML_TEMPLATE = """
             polar: {
                 radialaxis: {
                     visible: true,
-                    range: [-2.5, 2.5],
-                    tickvals: [-2, -1, 0, 1, 2],
+                    range: [25, 75],
+                    tickvals: [30, 40, 50, 60, 70],
                     gridcolor: "#e5e7eb",
                 },
             },
@@ -717,23 +721,23 @@ HTML_TEMPLATE = """
         requestAnimationFrame(step);
     }
 
-    // Plotly's radiale as loopt van -2.5 tot +2.5; extreme uitschieters
+    // Plotly's radiale as loopt van 25 tot 75 (T-score); extreme uitschieters
     // (bv. bij een heel kleine spreiding) worden hierop afgeklemd zodat de
-    // chart bruikbaar blijft. De echte, ongeklemde z-score blijft gewoon
+    // chart bruikbaar blijft. De echte, ongeklemde T-score blijft gewoon
     // zichtbaar in het infopaneel rechts.
-    function clampZ(z) {
-        return Math.max(-2.5, Math.min(2.5, z));
+    function clampT(t) {
+        return Math.max(25, Math.min(75, t));
     }
 
     function buildTraces(name, compareName, showTeam) {
         var p = PLAYERS[name];
-        var scoreArr = CATEGORIES.map(function (c) { return clampZ(p.scores[c]); });
+        var scoreArr = CATEGORIES.map(function (c) { return clampT(p.scores[c]); });
         scoreArr.push(scoreArr[0]);
         var thetaArr = CATEGORIES.concat([CATEGORIES[0]]);
 
         var traces = [];
         if (showTeam) {
-            var teamArr = CATEGORIES.map(function (c) { return clampZ(TEAM[c]); });
+            var teamArr = CATEGORIES.map(function (c) { return clampT(TEAM[c]); });
             teamArr.push(teamArr[0]);
             traces.push({
                 type: "scatterpolar",
@@ -747,7 +751,7 @@ HTML_TEMPLATE = """
         }
         if (compareName && compareName !== name && PLAYERS[compareName]) {
             var cp = PLAYERS[compareName];
-            var compareArr = CATEGORIES.map(function (c) { return clampZ(cp.scores[c]); });
+            var compareArr = CATEGORIES.map(function (c) { return clampT(cp.scores[c]); });
             compareArr.push(compareArr[0]);
             traces.push({
                 type: "scatterpolar",
