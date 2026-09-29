@@ -110,22 +110,12 @@ def team_testmoment_path(team_slug: str, base_name: str, kind: str) -> str:
 # zonder bekend geslacht kan er geen classificatie worden bepaald.
 TOPEND_BENCHMARK_ORDER = ["Poor", "Below Average", "Average", "Good", "Excellent", "Elite"]
 TOPEND_BENCHMARK_COLORS = {
-    "Poor": "#E8A9A9",
-    "Below Average": "#EFCB9E",
-    "Average": "#F0DCA0",
-    "Good": "#C8DDA0",
-    "Excellent": "#ABD4B4",
-    "Elite": "#8FC79D",
-}
-# Pastelkleuren zijn te licht voor witte tekst erop — donkere tekst in
-# dezelfde kleurfamilie houdt de badges leesbaar.
-TOPEND_BENCHMARK_TEXT_COLORS = {
-    "Poor": "#8B3A3A",
-    "Below Average": "#8B5E2E",
-    "Average": "#8A6D1F",
-    "Good": "#5D6B2E",
-    "Excellent": "#3D6B47",
-    "Elite": "#2F5A3B",
+    "Poor": "#dc2626",
+    "Below Average": "#f97316",
+    "Average": "#eab308",
+    "Good": "#84cc16",
+    "Excellent": "#22c55e",
+    "Elite": "#15803d",
 }
 
 _MALE_ALIASES = {"male", "man", "m", "jongen", "boy"}
